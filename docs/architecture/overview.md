@@ -30,7 +30,21 @@ This repository is an npm workspace with three packages:
 The abstract browser and page classes are exported for subclassing but are protected/abstract and also guard against direct
 runtime instantiation.
 
+`NocBrowser.authenticate(username, password)` performs the low-level NOC login flow:
+
+- GETs `/Default.aspx`
+- posts the scraped form fields plus the exact NOC credential fields
+- preserves the NOC-provided form action, including `rnd`
+- throws `NocAuthenticationError` when the login form remains on `Default.aspx`
+- exposes the parsed NOC login error message when one is present
+- returns `revisionAckRequired: true` when authentication succeeds but the response contains the active revision
+  acknowledgement confirm form
+
+Revision acknowledgement detection is content-based. The browser checks for the active confirm control
+(`#MasterMain_btnConfirm` or `input[name="ctl00$MasterMain$btnConfirm"]`) and does not treat the My Revision URL alone as
+acknowledgement-required state.
+
 ## Package Boundaries
 
-Phase 1 only implements reusable browser primitives. NOC authentication, revision handling, domain APIs, normalization,
-formatting, and CLI behavior are intentionally deferred to later phases.
+`@scope/noc-browser` currently implements reusable browser primitives plus low-level authentication/revision-ack detection.
+Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred to later phases.

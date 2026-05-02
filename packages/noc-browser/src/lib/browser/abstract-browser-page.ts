@@ -1,6 +1,6 @@
 import { load } from "cheerio";
 import type { AbstractBrowser } from "./abstract-browser.js";
-import type { FormFields } from "./types.js";
+import type { FormFields } from "../../types.js";
 
 export interface PageLoadOptions {
   readonly refresh?: boolean;

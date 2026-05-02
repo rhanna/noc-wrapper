@@ -33,3 +33,23 @@ export class NocJsonError extends NocBrowserError {
     this.body = body;
   }
 }
+
+export class NocAuthenticationError extends NocBrowserError {
+  readonly loginErrorMessage: string | undefined;
+
+  constructor(message: string, loginErrorMessage?: string) {
+    super(message);
+    this.name = "NocAuthenticationError";
+    this.loginErrorMessage = loginErrorMessage;
+  }
+}
+
+export class NocRevisionAckRequiredError extends NocBrowserError {
+  readonly details: unknown;
+
+  constructor(message = "NOC revision acknowledgement is required", details?: unknown) {
+    super(message);
+    this.name = "NocRevisionAckRequiredError";
+    this.details = details;
+  }
+}

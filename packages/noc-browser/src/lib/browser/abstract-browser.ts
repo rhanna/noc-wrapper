@@ -1,13 +1,7 @@
 import makeFetchCookie from "fetch-cookie";
 import { CookieJar } from "tough-cookie";
-import { NocHttpError, NocJsonError } from "./errors.js";
-import type {
-  FetchLike,
-  FormFields,
-  HtmlResponse,
-  JsonObject,
-  BrowserOptions,
-} from "./types.js";
+import { NocHttpError, NocJsonError } from "../../errors.js";
+import type { FetchLike, FormFields, HtmlResponse, JsonObject, BrowserOptions } from "../../types.js";
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 const FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
