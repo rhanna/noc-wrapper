@@ -5,6 +5,7 @@ export { AbstractBrowserPage } from "./lib/browser/abstract-browser-page.js";
 export type { PageLoadOptions } from "./lib/browser/abstract-browser-page.js";
 export { NocBrowser };
 export { NocBrowserPage } from "./noc-browser-page.js";
+export { NocRevisionPage, parseRevisionDays } from "./noc-revision-page.js";
 export {
   NocAuthenticationError,
   NocBrowserError,
@@ -14,6 +15,13 @@ export {
 } from "./errors.js";
 export type { NocAuthenticationResult as AuthenticationResult } from "./noc-auth.js";
 export type { RevisionAckDetails } from "./noc-revision-ack.js";
+export type {
+  NocConfirmRevisionResult as NocConfirmMyRevisionResult,
+  NocRevisionResult as NocMyRevisionResult,
+  NocRevisionActivity,
+  NocRevisionDay,
+  NocRevisionSection,
+} from "./noc-revision-page.js";
 export type {
   FetchLike,
   FormFields,

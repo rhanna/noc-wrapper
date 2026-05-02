@@ -7,6 +7,18 @@
 - [ ] Future improvement
 
 ## Done
+- [x] Phase 3: `noc-browser` revision APIs
+  - Context: Implemented `NocRevisionPage`, fresh My Revision retrieval,
+    content-based revision acknowledgement checks, confirm-post verification,
+    and low-level revision day parsing.
+  - Files: `packages/noc-browser/src/**`,
+    `packages/noc-browser/test/unit/revision.test.ts`,
+    `packages/noc-browser/test/integration/revision.test.ts`,
+    `docs/architecture/overview.md`.
+  - Verification: `npm run format` passed; `npm run test:unit` passed with 19
+    unit tests; `npm run test:integration` passed with 4 live integration tests,
+    including My Revision load/status without live confirmation; `npm run build`
+    passed.
 - [x] Add dotenv loading for integration tests
   - Context: Integration tests now load `.env.test.local`, `.env.test`, and
     `.env` without overriding existing shell variables.

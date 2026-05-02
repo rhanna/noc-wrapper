@@ -44,7 +44,20 @@ Revision acknowledgement detection is content-based. The browser checks for the 
 (`#MasterMain_btnConfirm` or `input[name="ctl00$MasterMain$btnConfirm"]`) and does not treat the My Revision URL alone as
 acknowledgement-required state.
 
+`NocRevisionPage` extends `NocBrowserPage` for `/Grids/HumanResources/HumanResourceMyRevision.aspx`.
+`NocBrowser` exposes thin low-level helpers over that page:
+
+- `getMyRevision()` always performs a fresh GET and returns the parsed My Revision page state
+- `hasRevisionAckRequired()` performs a fresh content-based acknowledgement check
+- `confirmMyRevision()` posts `ctl00$MasterMain$btnConfirm = Confirm` and verifies whether acknowledgement remains
+  required after the POST
+
+Parsed revision days preserve the page shape closely: each day exposes `date`, `revision`, `current`, flat `activities`,
+and day-level `notes`. Revision section headers `Revision` and `New` map to `revision`; `Current`, `Previous`, and `Old`
+map to `current`. Activities keep the original section header, table headers, detail values, header/value fields, and
+notes. Live integration tests never call `confirmMyRevision()` so they cannot acknowledge a real revision.
+
 ## Package Boundaries
 
-`@scope/noc-browser` currently implements reusable browser primitives plus low-level authentication/revision-ack detection.
+`@scope/noc-browser` currently implements reusable browser primitives plus low-level authentication and My Revision APIs.
 Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred to later phases.
