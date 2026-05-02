@@ -1,0 +1,23 @@
+{
+  "name": "noc-wrapper-2",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm --workspaces --if-present run build",
+    "format": "prettier --write .",
+    "test": "npm run test:unit",
+    "test:unit": "npm --workspace @scope/noc-browser run test:unit",
+    "test:integration": "npm --workspace @scope/noc-browser run test:integration"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "@types/tough-cookie": "^4.0.5",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
