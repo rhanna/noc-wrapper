@@ -16,8 +16,8 @@ export {
 export type { NocAuthenticationResult as AuthenticationResult } from "./noc-auth.js";
 export type { RevisionAckDetails } from "./noc-revision-ack.js";
 export type {
-  NocConfirmRevisionResult as NocConfirmMyRevisionResult,
-  NocRevisionResult as NocMyRevisionResult,
+  NocConfirmRevisionResult,
+  NocRevisionResult,
   NocRevisionActivity,
   NocRevisionDay,
   NocRevisionSection,

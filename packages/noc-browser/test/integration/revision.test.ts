@@ -22,6 +22,21 @@ describe("My Revision integration", () => {
       expect(revision.revisionAckRequired).toBe(revisionAckRequired);
       expect(Array.isArray(revision.days)).toBe(true);
 
+      const changedDays = revision.days.filter((day) => day.activities.length > 0);
+
+      if (changedDays.length > 0) {
+        const firstChangedDay = changedDays[0];
+        const firstActivity = firstChangedDay?.activities[0];
+
+        expect(firstChangedDay?.date).toEqual(expect.any(String));
+        expect(firstChangedDay?.date.length).toBeGreaterThan(0);
+        expect(firstChangedDay?.revision.length).toBeGreaterThan(0);
+        expect(firstChangedDay?.current.length).toBeGreaterThan(0);
+        expect(firstActivity?.headers.length).toBeGreaterThan(0);
+        expect(firstActivity?.values.length).toBeGreaterThan(0);
+        expect(Object.keys(firstActivity?.fields ?? {}).length).toBeGreaterThan(0);
+      }
+
       if (revision.revisionAckRequired) {
         expect(revision.revisionAckDetails?.confirmButtonPresent).toBe(true);
       }
