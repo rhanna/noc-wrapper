@@ -105,5 +105,5 @@ export function parseLoginErrorMessage(html: string): string | undefined {
 }
 
 function isFailedLogin(html: string, currentUrl: string): boolean {
-  return isDefaultPageUrl(currentUrl) && isLoginFormPresent(html);
+  return isDefaultPageUrl(currentUrl) || isLoginFormPresent(html);
 }

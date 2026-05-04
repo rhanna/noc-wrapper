@@ -70,6 +70,27 @@ describe("NocBrowser authentication", () => {
     });
   });
 
+  it("throws auth error when Default.aspx returns without the expected login form", async () => {
+    const browser = new NocBrowser({
+      baseUrl: "https://poe.example.test/RaidoMobile",
+      fetch: createFetch([], {
+        "https://poe.example.test/RaidoMobile/Default.aspx": htmlResponse(
+          "https://poe.example.test/RaidoMobile/Default.aspx",
+          loginPageHtml("Default.aspx?rnd=ambiguous"),
+        ),
+        "https://poe.example.test/RaidoMobile/Default.aspx?rnd=ambiguous": htmlResponse(
+          "https://poe.example.test/RaidoMobile/Default.aspx?rnd=ambiguous",
+          "<html><body><h1>Password change required</h1></body></html>",
+        ),
+      }),
+    });
+
+    await expect(browser.authenticate("user", "password")).rejects.toMatchObject({
+      name: "NocAuthenticationError",
+      message: "NOC authentication failed",
+    });
+  });
+
   it("returns revisionAckRequired when authentication lands on active revision acknowledgement", async () => {
     const browser = new NocBrowser({
       baseUrl: "https://poe.example.test/RaidoMobile",
