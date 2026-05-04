@@ -1,5 +1,5 @@
 {
-  "name": "@scope/noc-browser",
+  "name": "@rhanna/noc-browser",
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -14,7 +14,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run test:unit",
     "test:unit": "tsc -p tsconfig.test.json --noEmit && vitest run --config vitest.unit.config.ts",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:ack-revision": "vite-node test/manual/acknowledge-revision.manual.ts"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
