@@ -1,7 +1,9 @@
 import { load, type Cheerio, type CheerioAPI } from "cheerio";
 import type { AnyNode } from "domhandler";
-import { REVISION_PATH } from "./lib/noc-url-utils.js";
+import { NocAuthenticationError, NocBrowserError } from "./errors.js";
+import { REVISION_PATH, isDefaultPageUrl, isRevisionRequiredPage } from "./lib/noc-url-utils.js";
 import { textFrom } from "./lib/noc-parse-utils.js";
+import { isLoginFormPresent } from "./noc-auth.js";
 import { NocBrowserPage } from "./noc-browser-page.js";
 import {
   hasRevisionAckRequiredHtml,
@@ -52,16 +54,19 @@ export class NocRevisionPage extends NocBrowserPage {
 
   async getRevision(): Promise<NocRevisionResult> {
     await this.load({ refresh: true });
+    this.assertLoadedRevisionPage();
     return this.toRevisionResult();
   }
 
   async hasRevisionAckRequired(): Promise<boolean> {
     await this.load({ refresh: true });
+    this.assertLoadedRevisionPage();
     return hasRevisionAckRequiredHtml(this.html);
   }
 
   async confirmRevision(): Promise<NocConfirmRevisionResult> {
     await this.load({ refresh: true });
+    this.assertLoadedRevisionPage();
 
     if (!hasRevisionAckRequiredHtml(this.html)) {
       return {
@@ -74,6 +79,8 @@ export class NocRevisionPage extends NocBrowserPage {
     await this.post({
       [CONFIRM_REVISION_FIELD]: "Confirm",
     });
+
+    this.assertLoadedRevisionPage();
 
     const revisionAckRequired = hasRevisionAckRequiredHtml(this.html);
 
@@ -98,6 +105,20 @@ export class NocRevisionPage extends NocBrowserPage {
         : undefined,
       days: parseRevisionDays(this.html),
     };
+  }
+
+  private assertLoadedRevisionPage(): void {
+    if (isDefaultPageUrl(this.currentUrl) || isLoginFormPresent(this.html)) {
+      throw new NocAuthenticationError(
+        "NOC session is not authenticated; login page returned while loading My Revision",
+      );
+    }
+
+    if (!isRevisionRequiredPage(this.currentUrl)) {
+      throw new NocBrowserError(
+        `NOC returned an unexpected page while loading My Revision: ${this.currentUrl}`,
+      );
+    }
   }
 }
 

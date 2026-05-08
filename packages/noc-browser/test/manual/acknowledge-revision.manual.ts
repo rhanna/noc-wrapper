@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   assert.equal(
     process.env.NOC_ACK_REVISION,
     "interactive",
-    'Set NOC_ACK_REVISION=interactive to run this destructive manual test.',
+    "Set NOC_ACK_REVISION=interactive to run this destructive manual test.",
   );
   assert.ok(process.env.NOC_USERNAME, "NOC_USERNAME is required");
   assert.ok(process.env.NOC_PASSWORD, "NOC_PASSWORD is required");
@@ -46,7 +46,11 @@ async function main(): Promise<void> {
 
   const answer = await promptForConfirm();
 
-  assert.equal(answer, "confirm", 'Revision acknowledgement aborted; expected exact input "confirm".');
+  assert.equal(
+    answer,
+    "confirm",
+    'Revision acknowledgement aborted; expected exact input "confirm".',
+  );
 
   const confirmResult = await browser.confirmRevision();
 
@@ -60,18 +64,13 @@ async function promptForConfirm(): Promise<string> {
   const rl = createInterface({ input, output });
 
   try {
-    return (
-      await rl.question('\nType "confirm" to acknowledge this live revision: ')
-    ).trim();
+    return (await rl.question('\nType "confirm" to acknowledge this live revision: ')).trim();
   } finally {
     rl.close();
   }
 }
 
-function printRevisionSummary(
-  currentUrl: string,
-  changedDays: readonly NocRevisionDay[],
-): void {
+function printRevisionSummary(currentUrl: string, changedDays: readonly NocRevisionDay[]): void {
   console.log("\nLive My Revision change detected");
   console.log(`URL: ${currentUrl}`);
   console.log(`Changed days: ${changedDays.length}`);

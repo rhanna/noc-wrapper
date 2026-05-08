@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { NocBrowser, parseRevisionDays, type FetchLike } from "../../src/index.js";
+import {
+  NocAuthenticationError,
+  NocBrowser,
+  NocBrowserError,
+  parseRevisionDays,
+  type FetchLike,
+} from "../../src/index.js";
 
 describe("Revision parsing", () => {
   it("parses revision days into date, revision, current, and activity fields", () => {
@@ -90,6 +96,33 @@ describe("NocRevisionPage APIs", () => {
     await expect(browser.hasRevisionAckRequired()).resolves.toBe(true);
   });
 
+  it("rejects My Revision loads that are redirected to the login page", async () => {
+    const browser = new NocBrowser({
+      baseUrl: "https://poe.example.test/RaidoMobile",
+      fetch: createFetch([], {
+        "https://poe.example.test/RaidoMobile/Grids/HumanResources/HumanResourceMyRevision.aspx":
+          htmlResponse("https://poe.example.test/RaidoMobile/Default.aspx", loginPageHtml()),
+      }),
+    });
+
+    await expect(browser.getRevision()).rejects.toBeInstanceOf(NocAuthenticationError);
+  });
+
+  it("rejects My Revision loads that land on an unexpected authenticated page", async () => {
+    const browser = new NocBrowser({
+      baseUrl: "https://poe.example.test/RaidoMobile",
+      fetch: createFetch([], {
+        "https://poe.example.test/RaidoMobile/Grids/HumanResources/HumanResourceMyRevision.aspx":
+          htmlResponse(
+            "https://poe.example.test/RaidoMobile/Home.aspx",
+            "<html><body>Home</body></html>",
+          ),
+      }),
+    });
+
+    await expect(browser.getRevision()).rejects.toBeInstanceOf(NocBrowserError);
+  });
+
   it("posts the exact confirm field and preserves hidden form state", async () => {
     const calls: FetchCall[] = [];
     const browser = new NocBrowser({
@@ -160,6 +193,26 @@ describe("NocRevisionPage APIs", () => {
         confirmButtonPresent: true,
       },
     });
+  });
+
+  it("does not report confirm success when confirmation redirects to login", async () => {
+    const browser = new NocBrowser({
+      baseUrl: "https://poe.example.test/RaidoMobile",
+      fetch: createFetch([], {
+        "https://poe.example.test/RaidoMobile/Grids/HumanResources/HumanResourceMyRevision.aspx":
+          htmlResponse(
+            "https://poe.example.test/RaidoMobile/Grids/HumanResources/HumanResourceMyRevision.aspx",
+            revisionPageHtml({
+              action: "HumanResourceMyRevision.aspx?rnd=expired",
+              confirmButton: true,
+            }),
+          ),
+        "https://poe.example.test/RaidoMobile/Grids/HumanResources/HumanResourceMyRevision.aspx?rnd=expired":
+          htmlResponse("https://poe.example.test/RaidoMobile/Default.aspx", loginPageHtml()),
+      }),
+    });
+
+    await expect(browser.confirmRevision()).rejects.toBeInstanceOf(NocAuthenticationError);
   });
 });
 
@@ -260,5 +313,19 @@ function activityHolder(headerText: string, detailText: string, notes = ""): str
       </table>
       ${notes ? `<div class="ItemNotes">${notes}</div>` : ""}
     </div>
+  `;
+}
+
+function loginPageHtml(): string {
+  return `
+    <html>
+      <body>
+        <form method="post" action="Default.aspx?rnd=login">
+          <input name="ctl00$MasterMain$txtUserName" value="" />
+          <input name="ctl00$MasterMain$txtPassword" value="" />
+          <input type="submit" name="ctl00$MasterMain$btnSub" value="Login" />
+        </form>
+      </body>
+    </html>
   `;
 }
