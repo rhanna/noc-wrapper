@@ -44,10 +44,7 @@ export abstract class AbstractBrowser {
 
     return this.requestHtml(pathOrUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": FORM_CONTENT_TYPE,
-        ...headers,
-      },
+      headers: mergeHeaders({ "Content-Type": FORM_CONTENT_TYPE }, headers),
       body,
     });
   }
@@ -59,11 +56,13 @@ export abstract class AbstractBrowser {
   ): Promise<T> {
     const json = await this.requestJson<unknown>(pathOrUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": JSON_CONTENT_TYPE,
-        Accept: JSON_CONTENT_TYPE,
-        ...headers,
-      },
+      headers: mergeHeaders(
+        {
+          "Content-Type": JSON_CONTENT_TYPE,
+          Accept: JSON_CONTENT_TYPE,
+        },
+        headers,
+      ),
       body: JSON.stringify(payload),
     });
 
@@ -73,10 +72,7 @@ export abstract class AbstractBrowser {
   async getJsonApi<T = unknown>(pathOrUrl: string, headers: HeadersInit = {}): Promise<T> {
     return this.requestJson<T>(pathOrUrl, {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-        ...headers,
-      },
+      headers: mergeHeaders({ Accept: "application/json" }, headers),
     });
   }
 
@@ -152,4 +148,14 @@ function normalizeBaseUrl(baseUrl: string): string {
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function mergeHeaders(defaults: HeadersInit, overrides: HeadersInit): Headers {
+  const headers = new Headers(defaults);
+
+  new Headers(overrides).forEach((value, key) => {
+    headers.set(key, value);
+  });
+
+  return headers;
 }

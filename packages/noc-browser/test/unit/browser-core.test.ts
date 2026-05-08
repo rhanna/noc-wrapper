@@ -123,6 +123,37 @@ describe("NocBrowser", () => {
 
     expect(calls[0]?.body?.toString()).toBe("{}");
   });
+
+  it("merges HeadersInit overrides without dropping tuple or Headers values", async () => {
+    const calls: FetchCall[] = [];
+    const browser = new NocBrowser({
+      baseUrl: "https://poe.example.test/RaidoMobile",
+      fetch: createFetch(calls, {
+        "https://poe.example.test/RaidoMobile/Service.aspx/Method": jsonResponse(
+          "https://poe.example.test/RaidoMobile/Service.aspx/Method",
+          { d: true },
+        ),
+        "https://poe.example.test/RaidoMobile/api/value": jsonResponse(
+          "https://poe.example.test/RaidoMobile/api/value",
+          { ok: true },
+        ),
+      }),
+    });
+
+    await browser.postWebMethod("/Service.aspx/Method", {}, [
+      ["Accept", "application/vnd.noc+json"],
+      ["X-NOC-Token", "tuple-token"],
+    ]);
+    await browser.getJsonApi("/api/value", new Headers({ "X-NOC-Token": "headers-token" }));
+
+    expect(headerValue(calls[0]?.init?.headers, "accept")).toBe("application/vnd.noc+json");
+    expect(headerValue(calls[0]?.init?.headers, "content-type")).toBe(
+      "application/json; charset=utf-8",
+    );
+    expect(headerValue(calls[0]?.init?.headers, "x-noc-token")).toBe("tuple-token");
+    expect(headerValue(calls[1]?.init?.headers, "accept")).toBe("application/json");
+    expect(headerValue(calls[1]?.init?.headers, "x-noc-token")).toBe("headers-token");
+  });
 });
 
 describe("abstract classes", () => {
@@ -200,4 +231,8 @@ function responseWithUrl(url: string, body: BodyInit, init: ResponseInit): Respo
   const response = new Response(body, init);
   Object.defineProperty(response, "url", { value: url });
   return response;
+}
+
+function headerValue(headers: HeadersInit | undefined, name: string): string | null {
+  return new Headers(headers).get(name);
 }
