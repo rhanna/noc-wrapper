@@ -14,6 +14,11 @@ export {
   NocRevisionAckRequiredError,
 } from "./errors.js";
 export type { NocAuthenticationResult as AuthenticationResult } from "./noc-auth.js";
+export type {
+  NocRosterMonthlyAccumulatedValue,
+  NocRosterMonthlyAccumulatedValuesOptions,
+  NocRosterMonthlyAccumulatedValuesResult,
+} from "./noc-roster.js";
 export type { RevisionAckDetails } from "./noc-revision-ack.js";
 export type {
   NocConfirmRevisionResult,

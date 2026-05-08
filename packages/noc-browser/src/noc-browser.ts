@@ -1,6 +1,11 @@
 import { AbstractBrowser } from "./lib/browser/abstract-browser.js";
 import { authenticate, type NocAuthenticationResult } from "./noc-auth.js";
 import {
+  getRosterMonthlyAccumulatedValues,
+  type NocRosterMonthlyAccumulatedValuesOptions,
+  type NocRosterMonthlyAccumulatedValuesResult,
+} from "./noc-roster.js";
+import {
   NocRevisionPage,
   type NocConfirmRevisionResult,
   type NocRevisionResult,
@@ -14,6 +19,12 @@ export class NocBrowser extends AbstractBrowser {
 
   async authenticate(username: string, password: string): Promise<NocAuthenticationResult> {
     return authenticate(this, username, password);
+  }
+
+  async getRosterMonthlyAccumulatedValues(
+    options: NocRosterMonthlyAccumulatedValuesOptions,
+  ): Promise<NocRosterMonthlyAccumulatedValuesResult> {
+    return getRosterMonthlyAccumulatedValues(this, options);
   }
 
   async getRevision(): Promise<NocRevisionResult> {

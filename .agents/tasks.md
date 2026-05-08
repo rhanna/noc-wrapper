@@ -7,6 +7,33 @@
 - [ ] Future improvement
 
 ## Done
+- [x] Rename monthly accumulated values module to Roster
+  - Context: Renamed the just-added module, public method, exported types,
+    tests, fixture, documentation, and task references to Roster wording.
+  - Files: `packages/noc-browser/src/noc-roster.ts`,
+    `packages/noc-browser/src/noc-browser.ts`,
+    `packages/noc-browser/src/index.ts`,
+    `packages/noc-browser/test/unit/roster.test.ts`,
+    `packages/noc-browser/test/integration/roster.test.ts`,
+    `samples/sample.getRosterMonthlyAccumulatedValues.json`,
+    `docs/architecture/overview.md`, `.agents/tasks.md`.
+  - Verification: `npm run format` passed; `npm run test:unit` passed with 28
+    unit tests; `npm run test:integration` passed with 5 live integration tests;
+    `npm run build` passed.
+- [x] Add missing Roster monthly accumulated values API
+  - Context: Implemented the low-level Roster
+    `GetMonthlyAccumulatedValues` WebMethod from the HAR and aligned workspace
+    scripts/dependencies with the renamed `@rhanna/noc-browser` package.
+  - Files: `packages/noc-browser/src/noc-roster.ts`,
+    `packages/noc-browser/src/noc-browser.ts`,
+    `packages/noc-browser/src/index.ts`,
+    `packages/noc-browser/test/unit/roster.test.ts`,
+    `packages/noc-browser/test/integration/roster.test.ts`,
+    `package.json`, `package-lock.json`, `packages/noc-client/package.json`,
+    `docs/architecture/overview.md`.
+  - Verification: `npm run format` passed; `npm run test:unit` passed with 28
+    unit tests; `npm run test:integration` passed with 5 live integration tests;
+    `npm run build` passed.
 - [x] Phase 3: `noc-browser` revision APIs
   - Context: Implemented `NocRevisionPage`, fresh My Revision retrieval,
     content-based revision acknowledgement checks, confirm-post verification,

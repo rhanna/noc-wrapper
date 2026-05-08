@@ -2,11 +2,11 @@
 
 This repository is an npm workspace with three packages:
 
-- `@scope/noc-browser`: implemented low-level browser/client package for direct NOC portal interactions.
+- `@rhanna/noc-browser`: implemented low-level browser/client package for direct NOC portal interactions.
 - `@scope/noc-client`: placeholder package reserved for higher-order normalized convenience APIs.
 - `@scope/noc-cli`: placeholder package reserved for the command-line app.
 
-## `@scope/noc-browser`
+## `@rhanna/noc-browser`
 
 `NocBrowser` extends `AbstractBrowser`, which owns shared HTTP behavior:
 
@@ -47,17 +47,22 @@ acknowledgement-required state.
 `NocRevisionPage` extends `NocBrowserPage` for `/Grids/HumanResources/HumanResourceMyRevision.aspx`.
 `NocBrowser` exposes thin low-level helpers over that page:
 
-- `getMyRevision()` always performs a fresh GET and returns the parsed My Revision page state
+- `getRevision()` always performs a fresh GET and returns the parsed My Revision page state
 - `hasRevisionAckRequired()` performs a fresh content-based acknowledgement check
-- `confirmMyRevision()` posts `ctl00$MasterMain$btnConfirm = Confirm` and verifies whether acknowledgement remains
+- `confirmRevision()` posts `ctl00$MasterMain$btnConfirm = Confirm` and verifies whether acknowledgement remains
   required after the POST
 
 Parsed revision days preserve the page shape closely: each day exposes `date`, `revision`, `current`, flat `activities`,
 and day-level `notes`. Revision section headers `Revision` and `New` map to `revision`; `Current`, `Previous`, and `Old`
 map to `current`. Activities keep the original section header, table headers, detail values, header/value fields, and
-notes. Live integration tests never call `confirmMyRevision()` so they cannot acknowledge a real revision.
+notes. Live integration tests never call `confirmRevision()` so they cannot acknowledge a real revision.
+
+`NocBrowser.getRosterMonthlyAccumulatedValues({ month, year, hrId })` implements the low-level Roster WebMethod
+`/Dialogues/HumanResources/HumanResourceRoster.aspx/GetMonthlyAccumulatedValues`. It validates the required numeric
+arguments, posts the exact NOC payload shape, and returns the raw `.d`-unwrapped payload without parsing or normalization.
 
 ## Package Boundaries
 
-`@scope/noc-browser` currently implements reusable browser primitives plus low-level authentication and My Revision APIs.
-Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred to later phases.
+`@rhanna/noc-browser` currently implements reusable browser primitives plus low-level authentication, My Revision, and
+Roster monthly accumulated values APIs. Domain APIs, normalization, formatting, and CLI behavior are intentionally
+deferred to later phases.
