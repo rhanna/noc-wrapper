@@ -6,7 +6,14 @@ const ROSTER_CURRENT_USER_INFO_PATH =
   "/Dialogues/HumanResources/HumanResourceRoster.aspx/GetCurrentUserInfo";
 
 interface CurrentUserInfo {
+  readonly Info?: {
+    readonly CurrentUser?: {
+      readonly Id?: unknown;
+    };
+  };
+  readonly hrId?: unknown;
   readonly HrId?: unknown;
+  readonly date?: unknown;
   readonly Date?: unknown;
 }
 
@@ -30,11 +37,12 @@ describe("Roster integration", () => {
 
       const currentUser = await browser.postWebMethod<CurrentUserInfo>(
         ROSTER_CURRENT_USER_INFO_PATH,
-        {},
+        { hrId: -1 },
       );
-      const hrId = currentUser.HrId;
+      const hrId = currentUser.Info?.CurrentUser?.Id ?? currentUser.hrId ?? currentUser.HrId;
+      const currentUserDate = currentUser.date ?? currentUser.Date;
       const rosterDate =
-        typeof currentUser.Date === "string" ? new Date(currentUser.Date) : new Date();
+        typeof currentUserDate === "string" ? new Date(currentUserDate) : new Date();
 
       expect(typeof hrId).toBe("number");
       expect(Number.isInteger(hrId)).toBe(true);
