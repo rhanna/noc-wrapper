@@ -80,6 +80,7 @@ export class NocRevisionPage extends NocBrowserPage {
       [CONFIRM_REVISION_FIELD]: "Confirm",
     });
 
+    // After POST, assertLoadedRevisionPage checks if the response redirected to a login page
     this.assertLoadedRevisionPage();
 
     const revisionAckRequired = hasRevisionAckRequiredHtml(this.html);

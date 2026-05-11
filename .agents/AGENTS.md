@@ -24,7 +24,6 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
   make the requested low-level operation impossible.
 
   Revision acknowledgement rule:
-  - Use the name `RevisionAckRequired`, not `RevisionActRequired`.
   - Export `NocRevisionAckRequiredError`.
   - Use result/status field name `revisionAckRequired`.
   - A NOC call that fails to achieve its goal because it is redirected to revision acknowledgement must throw
