@@ -5,8 +5,7 @@ export { AbstractBrowserPage } from "./lib/browser/abstract-browser-page.js";
 export type { PageLoadOptions } from "./lib/browser/abstract-browser-page.js";
 export { NocBrowser };
 export { NocBrowserPage } from "./noc-browser-page.js";
-export { NocLoginPage } from "./noc-auth.js";
-export { NocRevisionPage, parseRevisionDays } from "./noc-revision-page.js";
+export { parseRevisionDays } from "./noc-revision-page.js";
 export {
   NocAuthenticationError,
   NocBrowserError,

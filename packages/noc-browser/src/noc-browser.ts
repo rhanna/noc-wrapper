@@ -34,17 +34,17 @@ import type { BrowserOptions } from "./types.js";
  *  - Know anything about users or sessions beyond its own cookie jar
  */
 export class NocBrowser extends AbstractBrowser {
-  readonly loginPage: NocLoginPage;
-  readonly revisionPage: NocRevisionPage;
+  readonly #loginPage: NocLoginPage;
+  readonly #revisionPage: NocRevisionPage;
 
   constructor(options: BrowserOptions) {
     super(options);
-    this.loginPage = new NocLoginPage(this);
-    this.revisionPage = new NocRevisionPage(this);
+    this.#loginPage = new NocLoginPage(this);
+    this.#revisionPage = new NocRevisionPage(this);
   }
 
   async authenticate(username: string, password: string): Promise<NocAuthenticationResult> {
-    return this.loginPage.authenticate(username, password);
+    return this.#loginPage.authenticate(username, password);
   }
 
   async getRosterMonthlyAccumulatedValues(
@@ -54,14 +54,14 @@ export class NocBrowser extends AbstractBrowser {
   }
 
   async getRevision(): Promise<NocRevisionResult> {
-    return this.revisionPage.getRevision();
+    return this.#revisionPage.getRevision();
   }
 
   async confirmRevision(): Promise<NocConfirmRevisionResult> {
-    return this.revisionPage.confirmRevision();
+    return this.#revisionPage.confirmRevision();
   }
 
   async hasRevisionAckRequired(): Promise<boolean> {
-    return this.revisionPage.hasRevisionAckRequired();
+    return this.#revisionPage.hasRevisionAckRequired();
   }
 }
