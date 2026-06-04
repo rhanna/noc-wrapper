@@ -1,12 +1,10 @@
 import { load } from "cheerio";
 import { describe, expect, it } from "vitest";
-import {
-  AbstractBrowser,
-  AbstractBrowserPage,
-  NocBrowser,
-  NocBrowserPage,
-  type FetchLike,
-} from "../../src/index.js";
+import { AbstractBrowser } from "../../src/lib/browser/abstract-browser.js";
+import { AbstractBrowserPage } from "../../src/lib/browser/abstract-browser-page.js";
+import { NocBrowser } from "../../src/index.js";
+import { NocBrowserPage } from "../../src/noc-browser-page.js";
+import type { FetchLike } from "../../src/types.js";
 
 describe("NocBrowserPage", () => {
   it("scrapes form actions including NOC rnd values", async () => {

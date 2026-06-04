@@ -3,8 +3,8 @@ import {
   NocAuthenticationError,
   NocBrowser,
   NocRevisionAckRequiredError,
-  type FetchLike,
 } from "../../src/index.js";
+import type { FetchLike } from "../../src/types.js";
 
 describe("NocBrowser authentication", () => {
   it("posts exact NOC authentication fields with scraped hidden fields", async () => {

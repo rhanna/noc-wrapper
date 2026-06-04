@@ -3,9 +3,9 @@ import {
   NocAuthenticationError,
   NocBrowser,
   NocBrowserError,
-  parseRevisionDays,
-  type FetchLike,
 } from "../../src/index.js";
+import { parseRevisionDays } from "../../src/noc-revision-page.js";
+import type { FetchLike } from "../../src/types.js";
 
 describe("Revision parsing", () => {
   it("parses revision days into date, revision, current, and activity fields", () => {

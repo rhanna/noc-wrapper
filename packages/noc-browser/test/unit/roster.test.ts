@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { NocBrowser, NocBrowserError, type FetchLike } from "../../src/index.js";
+import { NocBrowser, NocBrowserError } from "../../src/index.js";
+import type { FetchLike } from "../../src/types.js";
 
 describe("Roster APIs", () => {
   it("posts exact Roster monthly accumulated values payload to the NOC WebMethod", async () => {

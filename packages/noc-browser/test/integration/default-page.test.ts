@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { NocBrowser, NocBrowserPage } from "../../src/index.js";
+import { NocBrowser } from "../../src/index.js";
+import { NocBrowserPage } from "../../src/noc-browser-page.js";
 
 const DEFAULT_BASE_URL = "https://poe.noc.vmc.navblue.cloud/RaidoMobile";
 
