@@ -7,10 +7,8 @@ import {
   type RevisionAckDetails,
 } from "./noc-revision-ack.js";
 import type { NocBrowser } from "./noc-browser.js";
-import { isDefaultPageUrl, isRevisionRequiredPage } from "./lib/noc-url-utils.js";
+import { isDefaultPageUrl, isRevisionRequiredPage, LOGIN_PATH } from "./lib/noc-url-utils.js";
 import { firstText } from "./lib/noc-parse-utils.js";
-
-const LOGIN_PATH = "/Default.aspx";
 
 export interface NocAuthenticationResult {
   readonly authenticated: true;
