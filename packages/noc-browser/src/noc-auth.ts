@@ -17,53 +17,55 @@ export interface NocAuthenticationResult {
   readonly revisionAckDetails?: RevisionAckDetails;
 }
 
-export async function authenticate(
-  browser: NocBrowser,
-  username: string,
-  password: string,
-): Promise<NocAuthenticationResult> {
-  if (!username) {
-    throw new NocAuthenticationError("NOC username is required");
+export class NocLoginPage extends NocBrowserPage {
+  constructor(browser: NocBrowser) {
+    super(browser, LOGIN_PATH);
   }
 
-  if (!password) {
-    throw new NocAuthenticationError("NOC password is required");
-  }
+  async authenticate(username: string, password: string): Promise<NocAuthenticationResult> {
+    if (!username) {
+      throw new NocAuthenticationError("NOC username is required");
+    }
 
-  const page = await new NocBrowserPage(browser, LOGIN_PATH).load({ refresh: true });
+    if (!password) {
+      throw new NocAuthenticationError("NOC password is required");
+    }
 
-  await page.post({
-    ctl00$MasterMain$txtUserName: username,
-    ctl00$MasterMain$txtPassword: password,
-    ctl00$MasterMain$languageid: "1",
-    ctl00$MasterMain$cbSave: "on",
-    ctl00$MasterMain$btnSub: "Login",
-  });
+    await this.load({ refresh: true });
 
-  if (isFailedLogin(page.html, page.currentUrl)) {
-    const loginErrorMessage = parseLoginErrorMessage(page.html);
-    throw new NocAuthenticationError(
-      loginErrorMessage
-        ? `NOC authentication failed: ${loginErrorMessage}`
-        : "NOC authentication failed",
-      loginErrorMessage,
-    );
-  }
+    await this.post({
+      ctl00$MasterMain$txtUserName: username,
+      ctl00$MasterMain$txtPassword: password,
+      ctl00$MasterMain$languageid: "1",
+      ctl00$MasterMain$cbSave: "on",
+      ctl00$MasterMain$btnSub: "Login",
+    });
 
-  if (isRevisionRequiredPage(page.currentUrl) && hasRevisionAckRequiredHtml(page.html)) {
+    if (isFailedLogin(this.html, this.currentUrl)) {
+      const loginErrorMessage = parseLoginErrorMessage(this.html);
+      throw new NocAuthenticationError(
+        loginErrorMessage
+          ? `NOC authentication failed: ${loginErrorMessage}`
+          : "NOC authentication failed",
+        loginErrorMessage,
+      );
+    }
+
+    if (isRevisionRequiredPage(this.currentUrl) && hasRevisionAckRequiredHtml(this.html)) {
+      return {
+        authenticated: true,
+        currentUrl: this.currentUrl,
+        revisionAckRequired: true,
+        revisionAckDetails: parseRevisionAckDetails(this.html, this.currentUrl),
+      };
+    }
+
     return {
       authenticated: true,
-      currentUrl: page.currentUrl,
-      revisionAckRequired: true,
-      revisionAckDetails: parseRevisionAckDetails(page.html, page.currentUrl),
+      currentUrl: this.currentUrl,
+      revisionAckRequired: false,
     };
   }
-
-  return {
-    authenticated: true,
-    currentUrl: page.currentUrl,
-    revisionAckRequired: false,
-  };
 }
 
 export function isLoginFormPresent(html: string): boolean {

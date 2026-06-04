@@ -30,7 +30,27 @@ This repository is an npm workspace with three packages:
 The abstract browser and page classes are exported for subclassing but are protected/abstract and also guard against direct
 runtime instantiation.
 
-`NocBrowser.authenticate(username, password)` performs the low-level NOC login flow:
+### HTML Page Interaction Policy
+
+Any NOC interaction that requires loading an HTML page, scraping form state, posting ASP.NET Web Forms fields, following a
+page-local form action, or otherwise depending on page-local HTML state must live inside an explicit page class. Those
+classes extend `NocBrowserPage` and keep their state on the page instance through `path`, `currentUrl`, `formAction`,
+`fields`, `html`, and `loaded`.
+
+Examples of this pattern are `NocLoginPage` and `NocRevisionPage`. Future HTML-backed flows, such as `StationOpsPage`,
+must follow the same model: `NocBrowser` owns one page instance and exposes thin delegating methods when a browser-level
+method is useful.
+
+Direct NOC JSON calls do not need page instances when they do not depend on loaded HTML page state. WebMethods and JSON
+APIs such as `GetRoster`, `GetCurrentUserInfo`, and `GetMonthlyAccumulatedValues` should remain direct browser/client
+calls that use the shared authenticated fetch session.
+
+`NocBrowser` owns one `NocLoginPage` for `/Default.aspx` and one `NocRevisionPage` for
+`/Grids/HumanResources/HumanResourceMyRevision.aspx`. Browser methods delegate to those persistent page objects while
+sharing the browser cookie jar and fetch session.
+
+`NocBrowser.authenticate(username, password)` delegates to the browser's `NocLoginPage` and performs the low-level NOC
+login flow:
 
 - GETs `/Default.aspx`
 - posts the scraped form fields plus the exact NOC credential fields
@@ -45,7 +65,7 @@ Revision acknowledgement detection is content-based. The browser checks for the 
 acknowledgement-required state.
 
 `NocRevisionPage` extends `NocBrowserPage` for `/Grids/HumanResources/HumanResourceMyRevision.aspx`.
-`NocBrowser` exposes thin low-level helpers over that page:
+`NocBrowser` exposes thin low-level helpers over its revision page instance:
 
 - `getRevision()` always performs a fresh GET and returns the parsed My Revision page state
 - `hasRevisionAckRequired()` performs a fresh content-based acknowledgement check

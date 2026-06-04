@@ -5,6 +5,8 @@ import {
   AbstractBrowserPage,
   NocBrowser,
   NocBrowserPage,
+  NocLoginPage,
+  NocRevisionPage,
   type FetchLike,
 } from "../../src/index.js";
 
@@ -105,6 +107,15 @@ describe("NocBrowserPage", () => {
 });
 
 describe("NocBrowser", () => {
+  it("owns one login page and one revision page instance", () => {
+    const browser = new NocBrowser({ baseUrl: "https://poe.example.test/RaidoMobile" });
+
+    expect(browser.loginPage).toBeInstanceOf(NocLoginPage);
+    expect(browser.revisionPage).toBeInstanceOf(NocRevisionPage);
+    expect(browser.loginPage).toBe(browser.loginPage);
+    expect(browser.revisionPage).toBe(browser.revisionPage);
+  });
+
   it("unwraps ASP.NET WebMethod responses shaped as d", async () => {
     const calls: FetchCall[] = [];
     const browser = new NocBrowser({

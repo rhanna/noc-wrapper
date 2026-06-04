@@ -1,6 +1,5 @@
 import { AbstractBrowser } from "./lib/browser/abstract-browser.js";
-import { authenticate } from "./noc-auth.js";
-import { type NocAuthenticationResult } from "./types.js";
+import { NocLoginPage, type NocAuthenticationResult } from "./noc-auth.js";
 import {
   getRosterMonthlyAccumulatedValues,
   type NocRosterMonthlyAccumulatedValuesOptions,
@@ -35,12 +34,17 @@ import type { BrowserOptions } from "./types.js";
  *  - Know anything about users or sessions beyond its own cookie jar
  */
 export class NocBrowser extends AbstractBrowser {
+  readonly loginPage: NocLoginPage;
+  readonly revisionPage: NocRevisionPage;
+
   constructor(options: BrowserOptions) {
     super(options);
+    this.loginPage = new NocLoginPage(this);
+    this.revisionPage = new NocRevisionPage(this);
   }
 
   async authenticate(username: string, password: string): Promise<NocAuthenticationResult> {
-    return authenticate(this, username, password);
+    return this.loginPage.authenticate(username, password);
   }
 
   async getRosterMonthlyAccumulatedValues(
@@ -50,14 +54,14 @@ export class NocBrowser extends AbstractBrowser {
   }
 
   async getRevision(): Promise<NocRevisionResult> {
-    return new NocRevisionPage(this).getRevision();
+    return this.revisionPage.getRevision();
   }
 
   async confirmRevision(): Promise<NocConfirmRevisionResult> {
-    return new NocRevisionPage(this).confirmRevision();
+    return this.revisionPage.confirmRevision();
   }
 
   async hasRevisionAckRequired(): Promise<boolean> {
-    return new NocRevisionPage(this).hasRevisionAckRequired();
+    return this.revisionPage.hasRevisionAckRequired();
   }
 }
