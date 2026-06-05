@@ -77,12 +77,20 @@ and day-level `notes`. Revision section headers `Revision` and `New` map to `rev
 map to `current`. Activities keep the original section header, table headers, detail values, header/value fields, and
 notes. Live integration tests never call `confirmRevision()` so they cannot acknowledge a real revision.
 
-`NocBrowser.getRosterMonthlyAccumulatedValues({ month, year, hrId })` implements the low-level Roster WebMethod
-`/Dialogues/HumanResources/HumanResourceRoster.aspx/GetMonthlyAccumulatedValues`. It validates the required numeric
-arguments, posts the exact NOC payload shape, and returns the raw `.d`-unwrapped payload without parsing or normalization.
+`NocBrowser` implements the low-level Roster WebMethod group:
+
+- `getHumanResources()` posts `{}` to `GetHumanResources`
+- `getCurrentUserInfo()` posts `{ hrId: -1 }` to `GetCurrentUserInfo`
+- `getRoster({ month, year, hrId })` posts the exact caller-supplied roster identifiers to `GetRoster`
+- `getCrewOnBoardDetails(activityId)` posts `{ activityId }` to `GetCrewOnBoardDetails`
+- `getRosterMonthlyAccumulatedValues({ month, year, hrId })` posts the exact caller-supplied roster identifiers to
+  `GetMonthlyAccumulatedValues`
+
+These APIs validate required inputs, return raw `.d`-unwrapped NOC payloads without parsing or normalization, and do not
+make convenience lookup calls. If a Roster WebMethod is blocked by active revision acknowledgement, it throws
+`NocRevisionAckRequiredError`.
 
 ## Package Boundaries
 
 `@rhanna/noc-browser` currently implements reusable browser primitives plus low-level authentication, My Revision, and
-Roster monthly accumulated values APIs. Domain APIs, normalization, formatting, and CLI behavior are intentionally
-deferred to later phases.
+Roster APIs. Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred to later phases.

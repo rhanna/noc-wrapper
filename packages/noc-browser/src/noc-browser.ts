@@ -1,9 +1,17 @@
 import { AbstractBrowser } from "./lib/browser/abstract-browser.js";
 import { NocLoginPage, type NocAuthenticationResult } from "./noc-auth.js";
 import {
+  getCrewOnBoardDetails,
+  getCurrentUserInfo,
+  getHumanResources,
+  getRoster,
   getRosterMonthlyAccumulatedValues,
-  type NocRosterMonthlyAccumulatedValuesOptions,
+  type NocCrewOnBoardDetailsResult,
+  type NocCurrentUserInfoResult,
+  type NocHumanResourcesResult,
+  type NocRosterOptions,
   type NocRosterMonthlyAccumulatedValuesResult,
+  type NocRosterResult,
 } from "./noc-roster.js";
 import {
   NocRevisionPage,
@@ -16,7 +24,7 @@ import type { BrowserOptions } from "./types.js";
  * Low-level NOC portal I/O client.
  * NOT thread-safe. Callers are responsible for serializing access.
  * One instance should be held per authenticated user session.
- * 
+ *
  * What NocBrowser Should Do
  * Since it's stateful (it holds a cookie jar / fetch session), it should:
  *   - Throw descriptive errors that upper layers can act on
@@ -26,7 +34,7 @@ import type { BrowserOptions } from "./types.js";
  * The rich error types are the most important contract NocBrowser provides upward.
  * NocWrapper needs to know why something failed to decide whether to retry or re-auth.
  * If NocBrowser just throws Error: fetch failed, the upper layers are flying blind.
- * 
+ *
  * What NocBrowser Should Not Do
  *  - Retry on failure
  *  - Re-login on session expiry
@@ -47,8 +55,24 @@ export class NocBrowser extends AbstractBrowser {
     return this.#loginPage.authenticate(username, password);
   }
 
+  async getHumanResources(): Promise<NocHumanResourcesResult> {
+    return getHumanResources(this);
+  }
+
+  async getCurrentUserInfo(): Promise<NocCurrentUserInfoResult> {
+    return getCurrentUserInfo(this);
+  }
+
+  async getRoster(options: NocRosterOptions): Promise<NocRosterResult> {
+    return getRoster(this, options);
+  }
+
+  async getCrewOnBoardDetails(activityId: number): Promise<NocCrewOnBoardDetailsResult> {
+    return getCrewOnBoardDetails(this, activityId);
+  }
+
   async getRosterMonthlyAccumulatedValues(
-    options: NocRosterMonthlyAccumulatedValuesOptions,
+    options: NocRosterOptions,
   ): Promise<NocRosterMonthlyAccumulatedValuesResult> {
     return getRosterMonthlyAccumulatedValues(this, options);
   }

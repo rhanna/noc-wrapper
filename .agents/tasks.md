@@ -1,12 +1,35 @@
 # Tasks
 
 ## Active
-- [ ] None
+- None
 
 ## Backlog
 - [ ] Future improvement
 
 ## Done
+- [x] Merge duplicate Roster option types
+  - Context: Used `NocRosterOptions` for both `getRoster()` and
+    `getRosterMonthlyAccumulatedValues()` instead of maintaining an identical
+    monthly-specific options type.
+  - Files: `packages/noc-browser/src/noc-roster.ts`,
+    `packages/noc-browser/src/noc-browser.ts`,
+    `packages/noc-browser/src/index.ts`, `.agents/tasks.md`.
+  - Verification: `npm run format` passed; `npm run test:unit` passed with 34
+    unit tests; `npm run build` passed.
+- [x] Phase 4: `noc-browser` Roster APIs
+  - Context: Completed the low-level Roster WebMethod group by adding human
+    resources, current user, roster, and crew-on-board calls alongside the
+    existing Roster monthly accumulated values API.
+  - Files: `packages/noc-browser/src/noc-roster.ts`,
+    `packages/noc-browser/src/noc-browser.ts`,
+    `packages/noc-browser/src/index.ts`,
+    `packages/noc-browser/test/unit/roster.test.ts`,
+    `packages/noc-browser/test/integration/roster.test.ts`,
+    `docs/architecture/overview.md`.
+  - Verification: `npm run format` passed; `npm run test:unit` passed with 34
+    unit tests; `npm run test:integration` passed with 5 live integration tests;
+    `npm run build` passed. Live tests did not confirm revision
+    acknowledgement.
 - [x] Rename monthly accumulated values module to Roster
   - Context: Renamed the just-added module, public method, exported types,
     tests, fixture, documentation, and task references to Roster wording.

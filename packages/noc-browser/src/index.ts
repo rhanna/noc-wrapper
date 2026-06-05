@@ -10,8 +10,13 @@ export {
 } from "./errors.js";
 export type { NocAuthenticationResult } from "./noc-auth.js";
 export type {
+  NocCrewOnBoardDetailsResult,
+  NocCurrentUserInfoResult,
+  NocHumanResourcesResult,
+  NocRosterOptions,
+  NocRosterRawObject,
+  NocRosterResult,
   NocRosterMonthlyAccumulatedValue,
-  NocRosterMonthlyAccumulatedValuesOptions,
   NocRosterMonthlyAccumulatedValuesResult,
 } from "./noc-roster.js";
 export type { RevisionAckDetails } from "./noc-revision-ack.js";

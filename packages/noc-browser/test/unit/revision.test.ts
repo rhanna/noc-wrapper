@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  NocAuthenticationError,
-  NocBrowser,
-  NocBrowserError,
-} from "../../src/index.js";
+import { NocAuthenticationError, NocBrowser, NocBrowserError } from "../../src/index.js";
 import { parseRevisionDays } from "../../src/noc-revision-page.js";
 import type { FetchLike } from "../../src/types.js";
 
