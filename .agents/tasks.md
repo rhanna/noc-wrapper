@@ -7,6 +7,16 @@
 - [ ] Future improvement
 
 ## Done
+- [x] Strengthen Roster integration contract tests
+  - Context: Replaced weak live Roster API object checks with shape and invariant
+    assertions for current user, human resources, roster, monthly accumulated
+    values, and crew-on-board details.
+  - Files: `packages/noc-browser/test/integration/roster.test.ts`,
+    `.agents/tasks.md`.
+  - Verification: focused Roster integration test passed; `npm run format`
+    passed; `npm run test:unit` passed with 34 unit tests; `npm run
+    test:integration` passed with 5 live integration tests; `npm run build`
+    passed. Live tests did not confirm revision acknowledgement.
 - [x] Merge duplicate Roster option types
   - Context: Used `NocRosterOptions` for both `getRoster()` and
     `getRosterMonthlyAccumulatedValues()` instead of maintaining an identical
