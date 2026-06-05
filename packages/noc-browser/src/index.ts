@@ -10,6 +10,18 @@ export {
 } from "./errors.js";
 export type { NocAuthenticationResult } from "./noc-auth.js";
 export type {
+  NocNetReserveOptions,
+  NocNetReserveResult,
+  NocOpenTimeBaseOptions,
+  NocOpenTimePairingsBlockDetailsResult,
+  NocOpenTimePairingsLegalityValuesResult,
+  NocOpenTimePairingsResult,
+  NocOpenTimeRawObject,
+  NocOpenTimeRosterLegalityValuesResult,
+  NocOpenTimeRosterResult,
+  NocOpenTimeUserContextResult,
+} from "./noc-open-time.js";
+export type {
   NocCrewOnBoardDetailsResult,
   NocCurrentUserInfoResult,
   NocHumanResourcesResult,

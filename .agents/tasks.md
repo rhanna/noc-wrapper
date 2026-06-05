@@ -7,6 +7,21 @@
 - [ ] Future improvement
 
 ## Done
+- [x] Phase 5: `noc-browser` Open Time APIs
+  - Context: Implemented low-level Open Time JSON API calls with explicit methods
+    for roster legality values, pairing legality values, and pairing block
+    details instead of boolean include options.
+  - Files: `packages/noc-browser/src/noc-open-time.ts`,
+    `packages/noc-browser/src/noc-browser.ts`,
+    `packages/noc-browser/src/index.ts`,
+    `packages/noc-browser/test/unit/open-time.test.ts`,
+    `packages/noc-browser/test/integration/open-time.test.ts`,
+    `docs/architecture/overview.md`.
+  - Verification: focused Open Time unit test passed with 9 tests; focused Open
+    Time integration test passed; `npm run format` passed; `npm run test:unit`
+    passed with 43 unit tests; `npm run test:integration` passed with 6 live
+    integration tests; `npm run build` passed. Live tests did not confirm
+    revision acknowledgement.
 - [x] Strengthen Roster integration contract tests
   - Context: Replaced weak live Roster API object checks with shape and invariant
     assertions for current user, human resources, roster, monthly accumulated

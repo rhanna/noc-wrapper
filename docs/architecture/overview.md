@@ -90,7 +90,22 @@ These APIs validate required inputs, return raw `.d`-unwrapped NOC payloads with
 make convenience lookup calls. If a Roster WebMethod is blocked by active revision acknowledgement, it throws
 `NocRevisionAckRequiredError`.
 
+`NocBrowser` implements the low-level Open Time JSON API group:
+
+- `getOpenTimeUserContext()` GETs `/api/open-time/user-context`
+- `getOpenTimeRoster({ baseId })` GETs `/api/open-time/rosters/1?baseId={baseId}`
+- `getOpenTimeRosterLegalityValues({ baseId })` GETs `/api/open-time/rosters/1/legality?baseId={baseId}`
+- `getOpenTimePairings({ baseId })` GETs `/api/open-time/rosters/2?baseId={baseId}`
+- `getOpenTimePairingsLegalityValues({ baseId })` GETs `/api/open-time/rosters/2/legality?baseId={baseId}`
+- `getOpenTimePairingsBlockDetails(pairingId)` GETs `/api/open-time/rosters/2/block-details/{pairingId}`
+- `getNetReserve({ isSap = false } = {})` GETs `/api/open-time/net-reserve?isSap={true|false}`
+
+Open Time roster, legality, pairing, and block-detail calls are intentionally separate public methods. The browser never
+fetches legality values or block details as hidden convenience behavior from roster or pairing calls. These APIs validate
+required inputs and return raw NOC JSON payloads unchanged.
+
 ## Package Boundaries
 
 `@rhanna/noc-browser` currently implements reusable browser primitives plus low-level authentication, My Revision, and
-Roster APIs. Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred to later phases.
+Roster/Open Time APIs. Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred to later
+phases.

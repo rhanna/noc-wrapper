@@ -1,6 +1,24 @@
 import { AbstractBrowser } from "./lib/browser/abstract-browser.js";
 import { NocLoginPage, type NocAuthenticationResult } from "./noc-auth.js";
 import {
+  getNetReserve,
+  getOpenTimePairings,
+  getOpenTimePairingsBlockDetails,
+  getOpenTimePairingsLegalityValues,
+  getOpenTimeRoster,
+  getOpenTimeRosterLegalityValues,
+  getOpenTimeUserContext,
+  type NocNetReserveOptions,
+  type NocNetReserveResult,
+  type NocOpenTimeBaseOptions,
+  type NocOpenTimePairingsBlockDetailsResult,
+  type NocOpenTimePairingsLegalityValuesResult,
+  type NocOpenTimePairingsResult,
+  type NocOpenTimeRosterLegalityValuesResult,
+  type NocOpenTimeRosterResult,
+  type NocOpenTimeUserContextResult,
+} from "./noc-open-time.js";
+import {
   getCrewOnBoardDetails,
   getCurrentUserInfo,
   getHumanResources,
@@ -75,6 +93,40 @@ export class NocBrowser extends AbstractBrowser {
     options: NocRosterOptions,
   ): Promise<NocRosterMonthlyAccumulatedValuesResult> {
     return getRosterMonthlyAccumulatedValues(this, options);
+  }
+
+  async getOpenTimeUserContext(): Promise<NocOpenTimeUserContextResult> {
+    return getOpenTimeUserContext(this);
+  }
+
+  async getOpenTimeRoster(options: NocOpenTimeBaseOptions): Promise<NocOpenTimeRosterResult> {
+    return getOpenTimeRoster(this, options);
+  }
+
+  async getOpenTimeRosterLegalityValues(
+    options: NocOpenTimeBaseOptions,
+  ): Promise<NocOpenTimeRosterLegalityValuesResult> {
+    return getOpenTimeRosterLegalityValues(this, options);
+  }
+
+  async getOpenTimePairings(options: NocOpenTimeBaseOptions): Promise<NocOpenTimePairingsResult> {
+    return getOpenTimePairings(this, options);
+  }
+
+  async getOpenTimePairingsLegalityValues(
+    options: NocOpenTimeBaseOptions,
+  ): Promise<NocOpenTimePairingsLegalityValuesResult> {
+    return getOpenTimePairingsLegalityValues(this, options);
+  }
+
+  async getOpenTimePairingsBlockDetails(
+    pairingId: number,
+  ): Promise<NocOpenTimePairingsBlockDetailsResult> {
+    return getOpenTimePairingsBlockDetails(this, pairingId);
+  }
+
+  async getNetReserve(options: NocNetReserveOptions = {}): Promise<NocNetReserveResult> {
+    return getNetReserve(this, options);
   }
 
   async getRevision(): Promise<NocRevisionResult> {
