@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NocAuthenticationError, NocBrowser, NocBrowserError } from "../../src/index.js";
+import { hasRevisionAckRequiredHtml, parseRevisionAckDetails } from "../../src/noc-revision-ack.js";
 import { parseRevisionDays } from "../../src/noc-revision-page.js";
 import type { FetchLike } from "../../src/types.js";
 
@@ -130,6 +131,25 @@ describe("NocRevisionPage APIs", () => {
     await expect(browser.hasRevisionAckRequired()).resolves.toBe(true);
   });
 
+  it("does not require revision acknowledgement for a disabled confirm control", async () => {
+    const browser = new NocBrowser({
+      baseUrl: "https://poe.example.test/RaidoMobile",
+      fetch: createFetch([], {
+        "https://poe.example.test/RaidoMobile/Grids/HumanResources/HumanResourceMyRevision.aspx":
+          htmlResponse(
+            "https://poe.example.test/RaidoMobile/Grids/HumanResources/HumanResourceMyRevision.aspx",
+            revisionPageHtml({
+              confirmButton: true,
+              confirmButtonDisabled: true,
+              confirmButtonValue: "No revisions to confirm",
+            }),
+          ),
+      }),
+    });
+
+    await expect(browser.hasRevisionAckRequired()).resolves.toBe(false);
+  });
+
   it("rejects My Revision loads that are redirected to the login page", async () => {
     const browser = new NocBrowser({
       baseUrl: "https://poe.example.test/RaidoMobile",
@@ -250,6 +270,49 @@ describe("NocRevisionPage APIs", () => {
   });
 });
 
+describe("Revision acknowledgement detection", () => {
+  it("detects an enabled confirm button as acknowledgement-required", () => {
+    const html = revisionPageHtml({ confirmButton: true });
+
+    expect(hasRevisionAckRequiredHtml(html)).toBe(true);
+    expect(parseRevisionAckDetails(html, "https://poe.example.test/revision")).toMatchObject({
+      confirmButtonPresent: true,
+    });
+  });
+
+  it("ignores disabled confirm controls", () => {
+    const html = revisionPageHtml({
+      confirmButton: true,
+      confirmButtonDisabled: true,
+      confirmButtonValue: "No revisions to confirm",
+    });
+
+    expect(hasRevisionAckRequiredHtml(html)).toBe(false);
+    expect(parseRevisionAckDetails(html, "https://poe.example.test/revision")).toMatchObject({
+      confirmButtonPresent: false,
+    });
+  });
+
+  it("ignores confirm controls with a bare disabled attribute", () => {
+    expect(
+      hasRevisionAckRequiredHtml(`
+        <input
+          id="MasterMain_btnConfirm"
+          name="ctl00$MasterMain$btnConfirm"
+          value="No revisions to confirm"
+          disabled
+        />
+      `),
+    ).toBe(false);
+  });
+
+  it("does not require acknowledgement for an empty My Revision page", () => {
+    expect(
+      hasRevisionAckRequiredHtml("<html><body><h1>My Revision</h1><form></form></body></html>"),
+    ).toBe(false);
+  });
+});
+
 interface FetchCall {
   readonly url: string;
   readonly init: RequestInit | undefined;
@@ -302,9 +365,13 @@ function htmlResponse(url: string, html: string): Response {
 function revisionPageHtml({
   action = "HumanResourceMyRevision.aspx",
   confirmButton = false,
+  confirmButtonDisabled = false,
+  confirmButtonValue = "Confirm",
 }: {
   readonly action?: string;
   readonly confirmButton?: boolean;
+  readonly confirmButtonDisabled?: boolean;
+  readonly confirmButtonValue?: string;
 } = {}): string {
   return `
     <html>
@@ -314,7 +381,11 @@ function revisionPageHtml({
           <input type="hidden" name="__VIEWSTATE" value="state" />
           <input type="hidden" name="__EVENTVALIDATION" value="validation" />
           <span id="MasterMain_lblMessage">Review and confirm your active revision.</span>
-          ${confirmButton ? '<input id="MasterMain_btnConfirm" type="submit" name="ctl00$MasterMain$btnConfirm" value="Confirm" />' : ""}
+          ${
+            confirmButton
+              ? `<input id="MasterMain_btnConfirm" type="submit" name="ctl00$MasterMain$btnConfirm" value="${confirmButtonValue}" ${confirmButtonDisabled ? 'disabled="disabled"' : ""} />`
+              : ""
+          }
           <div class="ListItem">
             <div class="ItemDayHeader">01 Jan 2026</div>
             <div class="ItemDetailsHeader">Revision</div>

@@ -1,4 +1,4 @@
-import { load, type CheerioAPI } from "cheerio";
+import { load } from "cheerio";
 import { firstText } from "./lib/noc-parse-utils.js";
 
 const CONFIRM_BUTTON_SELECTOR = '#MasterMain_btnConfirm, input[name="ctl00$MasterMain$btnConfirm"]';
@@ -12,7 +12,7 @@ export interface NocRevisionAckDetailsRaw {
 
 export function hasRevisionAckRequiredHtml(html: string): boolean {
   const $ = load(html);
-  return $(CONFIRM_BUTTON_SELECTOR).length > 0;
+  return hasActionableConfirmButton($);
 }
 
 export function parseRevisionAckDetails(
@@ -37,6 +37,12 @@ export function parseRevisionAckDetails(
     currentUrl,
     title,
     message,
-    confirmButtonPresent: $(CONFIRM_BUTTON_SELECTOR).length > 0,
+    confirmButtonPresent: hasActionableConfirmButton($),
   };
+}
+
+function hasActionableConfirmButton($: ReturnType<typeof load>): boolean {
+  return $(CONFIRM_BUTTON_SELECTOR)
+    .toArray()
+    .some((element) => $(element).attr("disabled") === undefined);
 }

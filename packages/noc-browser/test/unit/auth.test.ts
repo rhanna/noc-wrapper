@@ -142,6 +142,30 @@ describe("NocBrowser authentication", () => {
     });
   });
 
+  it("does not treat a disabled revision confirm button as revisionAckRequired", async () => {
+    const browser = new NocBrowser({
+      baseUrl: "https://poe.example.test/RaidoMobile",
+      fetch: createFetch([], {
+        "https://poe.example.test/RaidoMobile/Default.aspx": htmlResponse(
+          "https://poe.example.test/RaidoMobile/Default.aspx",
+          loginPageHtml("Default.aspx?rnd=no-revisions"),
+        ),
+        "https://poe.example.test/RaidoMobile/Default.aspx?rnd=no-revisions": htmlResponse(
+          "https://poe.example.test/RaidoMobile/Grids/HumanResources/HumanResourceMyRevision.aspx",
+          revisionAckHtml({
+            confirmButtonDisabled: true,
+            confirmButtonValue: "No revisions to confirm",
+          }),
+        ),
+      }),
+    });
+
+    await expect(browser.authenticate("11538", "ActualPassword123")).resolves.toMatchObject({
+      authenticated: true,
+      revisionAckRequired: false,
+    });
+  });
+
   it("exports revision acknowledgement error with required naming", () => {
     const error = new NocRevisionAckRequiredError("RevisionAckRequired");
     expect(error).toBeInstanceOf(Error);
@@ -231,7 +255,13 @@ function loginPageHtml(action: string, errorMessage = ""): string {
   `;
 }
 
-function revisionAckHtml(): string {
+function revisionAckHtml({
+  confirmButtonDisabled = false,
+  confirmButtonValue = "Confirm",
+}: {
+  readonly confirmButtonDisabled?: boolean;
+  readonly confirmButtonValue?: string;
+} = {}): string {
   return `
     <html>
       <body>
@@ -242,7 +272,8 @@ function revisionAckHtml(): string {
             id="MasterMain_btnConfirm"
             type="submit"
             name="ctl00$MasterMain$btnConfirm"
-            value="Confirm"
+            value="${confirmButtonValue}"
+            ${confirmButtonDisabled ? 'disabled="disabled"' : ""}
           />
         </form>
       </body>
