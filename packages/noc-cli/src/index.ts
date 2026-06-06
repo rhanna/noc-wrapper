@@ -37,13 +37,14 @@ const commands: Record<string, CommandSpec> = {
     run: async ({ browser }) => browser.getHumanResources(),
   },
   roster: {
-    description: "Print GetRoster raw JSON. Requires --month, --year, and --hr-id.",
+    description:
+      "Print GetRoster raw JSON. Requires --month, --year, and --hr-id or --employee-num.",
     requiresAuth: true,
     run: async ({ browser, flags }) =>
       browser.getRoster({
         month: requireInteger(flags, "month"),
         year: requireInteger(flags, "year"),
-        hrId: requireInteger(flags, "hr-id"),
+        hrId: await readRosterHrId(browser, flags),
       }),
   },
   "roster-monthly-values": {
@@ -298,6 +299,112 @@ function parseInteger(value: string, name: string): number {
   }
 
   return parsed;
+}
+
+async function readRosterHrId(
+  browser: NocBrowser,
+  flags: Readonly<Record<string, string | boolean>>,
+): Promise<number> {
+  const hrId = readOptionalInteger(flags, "hr-id");
+  const employeeNum = readOptionalString(flags, "employee-num");
+
+  if (hrId !== undefined && employeeNum !== undefined) {
+    throw new Error("roster accepts either --hr-id or --employee-num, not both");
+  }
+
+  if (employeeNum !== undefined) {
+    return resolveHrIdByEmployeeNum(browser, employeeNum);
+  }
+
+  if (hrId !== undefined) {
+    return hrId;
+  }
+
+  throw new Error("Missing required option --hr-id or --employee-num");
+}
+
+async function resolveHrIdByEmployeeNum(browser: NocBrowser, employeeNum: string): Promise<number> {
+  const normalizedEmployeeNum = normalizeEmployeeNum(employeeNum);
+  const humanResources = await browser.getHumanResources();
+  const resources = readHumanResources(humanResources);
+  const matches = resources.filter(
+    (resource) => readEmployeeNum(resource) === normalizedEmployeeNum,
+  );
+
+  if (matches.length === 0) {
+    throw new Error(`No HumanResources row found for employee number: ${employeeNum}`);
+  }
+
+  if (matches.length > 1) {
+    throw new Error(`Multiple HumanResources rows found for employee number: ${employeeNum}`);
+  }
+
+  const hrId = matches[0]?.Id;
+
+  if (typeof hrId !== "number" || !Number.isInteger(hrId) || hrId < 1) {
+    throw new Error(`HumanResources row for employee number ${employeeNum} has no valid Id`);
+  }
+
+  return hrId;
+}
+
+interface HumanResourceRow {
+  readonly Id?: unknown;
+  readonly DisplayName?: unknown;
+  readonly EmpNo?: unknown;
+  readonly EmployeeNum?: unknown;
+  readonly EmployeeNumber?: unknown;
+  readonly [key: string]: unknown;
+}
+
+function readHumanResources(value: unknown): HumanResourceRow[] {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("GetHumanResources returned an invalid response");
+  }
+
+  const resources = (value as { readonly HumanResources?: unknown }).HumanResources;
+
+  if (!Array.isArray(resources)) {
+    throw new Error("GetHumanResources response is missing HumanResources");
+  }
+
+  return resources.filter(isHumanResourceRow);
+}
+
+function isHumanResourceRow(value: unknown): value is HumanResourceRow {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readEmployeeNum(resource: HumanResourceRow): string | undefined {
+  for (const field of ["EmpNo", "EmployeeNum", "EmployeeNumber"]) {
+    const value = resource[field];
+
+    if (typeof value === "string" || typeof value === "number") {
+      return normalizeEmployeeNumCandidate(String(value));
+    }
+  }
+
+  if (typeof resource.DisplayName !== "string") {
+    return undefined;
+  }
+
+  const match = /^\s*(\d+)\b/.exec(resource.DisplayName);
+  return match ? normalizeEmployeeNumCandidate(match[1] ?? "") : undefined;
+}
+
+function normalizeEmployeeNum(value: string): string {
+  const normalized = value.trim();
+
+  if (!/^\d+$/.test(normalized)) {
+    throw new Error("Option --employee-num must contain only digits");
+  }
+
+  return normalized;
+}
+
+function normalizeEmployeeNumCandidate(value: string): string | undefined {
+  const normalized = value.trim();
+  return /^\d+$/.test(normalized) ? normalized : undefined;
 }
 
 function readStationOpsSort(
