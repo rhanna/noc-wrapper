@@ -4,7 +4,7 @@ import { parseRevisionDays } from "../../src/noc-revision-page.js";
 import type { FetchLike } from "../../src/types.js";
 
 describe("Revision parsing", () => {
-  it("parses revision days into date, revision, current, and activity fields", () => {
+  it("parses revision days into date, literal NOC sections, and field rows", () => {
     const days = parseRevisionDays(revisionPageHtml());
 
     expect(days).toHaveLength(1);
@@ -12,31 +12,23 @@ describe("Revision parsing", () => {
       date: "01 Jan 2026",
       notes: ["Day note"],
     });
-    expect(days[0]?.activities).toHaveLength(2);
-    expect(days[0]?.revision[0]).toMatchObject({
-      section: "revision",
-      sectionHeader: "Revision",
-      headers: ["Pairing", "Report", "Release"],
-      values: ["AC123", "08:00", "16:45"],
-      fields: {
+    expect(days[0]?.Revision).toEqual([
+      {
         Pairing: "AC123",
         Report: "08:00",
         Release: "16:45",
       },
-      notes: ["Revision note"],
-    });
-    expect(days[0]?.current[0]).toMatchObject({
-      section: "current",
-      sectionHeader: "Current",
-      fields: {
+    ]);
+    expect(days[0]?.Current).toEqual([
+      {
         Pairing: "RSV",
         Report: "09:00",
         Release: "17:00",
       },
-    });
+    ]);
   });
 
-  it("maps New to revision and Previous or Old to current", () => {
+  it("keeps New, Previous, and Old as literal section keys", () => {
     const days = parseRevisionDays(`
       <div class="ListItem">
         <div class="ItemDayHeader">02 Jan 2026</div>
@@ -49,8 +41,54 @@ describe("Revision parsing", () => {
       </div>
     `);
 
-    expect(days[0]?.revision.map((activity) => activity.fields.Pairing)).toEqual(["NEW1"]);
-    expect(days[0]?.current.map((activity) => activity.fields.Pairing)).toEqual(["OLD1", "OLD2"]);
+    expect(days[0]?.New).toEqual([{ Pairing: "NEW1" }]);
+    expect(days[0]?.Previous).toEqual([{ Pairing: "OLD1" }]);
+    expect(days[0]?.Old).toEqual([{ Pairing: "OLD2" }]);
+    expect(days[0]).not.toHaveProperty("revision");
+    expect(days[0]).not.toHaveProperty("current");
+  });
+
+  it("appends rows when a section header repeats", () => {
+    const days = parseRevisionDays(`
+      <div class="ListItem">
+        <div class="ItemDayHeader">03 Jan 2026</div>
+        <div class="ItemDetailsHeader">Revision</div>
+        ${activityHolder("Pairing", "REV1")}
+        <div class="ItemDetailsHeader">Revision</div>
+        ${activityHolder("Pairing", "REV2")}
+      </div>
+    `);
+
+    expect(days[0]?.Revision).toEqual([{ Pairing: "REV1" }, { Pairing: "REV2" }]);
+  });
+
+  it("uses an empty string section key for holders before any section header", () => {
+    const days = parseRevisionDays(`
+      <div class="ListItem">
+        <div class="ItemDayHeader">04 Jan 2026</div>
+        ${activityHolder("Pairing", "UNSECTIONED")}
+      </div>
+    `);
+
+    expect(days[0]?.[""]).toEqual([{ Pairing: "UNSECTIONED" }]);
+  });
+
+  it("emits row fields only without legacy activity properties", () => {
+    const days = parseRevisionDays(revisionPageHtml());
+    const row = Array.isArray(days[0]?.Revision) ? days[0]?.Revision[0] : undefined;
+
+    expect(row).toEqual({
+      Pairing: "AC123",
+      Report: "08:00",
+      Release: "16:45",
+    });
+    expect(row).not.toHaveProperty("section");
+    expect(row).not.toHaveProperty("sectionHeader");
+    expect(row).not.toHaveProperty("headers");
+    expect(row).not.toHaveProperty("values");
+    expect(row).not.toHaveProperty("fields");
+    expect(row).not.toHaveProperty("notes");
+    expect(days[0]).not.toHaveProperty("activities");
   });
 });
 

@@ -115,16 +115,19 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
   Each parsed revision day should expose:
 
   - date
-  - revision: the new/revised roster section
-  - current: the old/current/previous roster section
-  - activities: flat compatibility list of all parsed activities
+  - notes
+  - one dynamic top-level array property per NOC section header text from `.ItemDetailsHeader`
 
-  Map section headers:
+  Do not map NOC section headers into semantic names. `Revision`, `Current`, `New`, `Previous`, and `Old` remain literal
+  keys when those headers appear in the page HTML. If an activity container appears before any section header, use the empty
+  string key `""` for that unsectioned structure.
 
-  - “Revision” / “New” -> revision
-  - “Current” / “Previous” / “Old” -> current
+  Each activity row should be a field-only object. Table header cell text from `.ItemChildHeader td` becomes the object key,
+  and the matching detail cell text from `.ItemChildDetails td` becomes the value. Do not emit legacy activity metadata such
+  as `section`, `sectionHeader`, `headers`, `values`, `fields`, or activity-level `notes`.
 
-  Do not rename NOC business fields beyond minimal structural keys needed to represent the page.
+  Do not rename NOC business fields beyond minimal structural keys needed to represent the page. Semantic interpretation of
+  section names belongs in `noc-client`.
 
   Human resources:
   Implement:

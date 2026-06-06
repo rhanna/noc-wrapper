@@ -37,7 +37,6 @@ export type {
   NocRevisionResultRaw,
   NocRevisionActivityRaw,
   NocRevisionDayRaw,
-  NocRevisionSectionRaw,
 } from "./noc-revision-page.js";
 export { StationOpsSort, StationOpsTimeMode } from "./noc-station-ops.js";
 export type {

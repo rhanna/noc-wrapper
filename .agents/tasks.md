@@ -7,6 +7,18 @@
 - [ ] Future improvement
 
 ## Done
+- [x] Phase 6.1 follow-up: Revision raw result shape 
+cleanup
+  - Branch: `phase-6.1-raw-results`.
+  - Context: Changed My Revision raw parsing to expose NOC section header text as dynamic day keys and activity rows as
+    field-only header/value objects. Removed semantic `revision/current` bucketing, flat `activities`, legacy activity
+    metadata, and section-name canonicalization from the public raw shape.
+  - Files: `packages/noc-browser/src/noc-revision-page.ts`, `packages/noc-browser/src/index.ts`,
+    `packages/noc-browser/test/unit/revision.test.ts`, `packages/noc-browser/test/integration/revision.test.ts`,
+    `packages/noc-browser/test/manual/acknowledge-revision.manual.ts`, `.agents/AGENTS.md`,
+    `docs/architecture/overview.md`, `.agents/tasks.md`.
+  - Verification: `npm run format` passed; `npm run test:unit` passed with 55 unit tests; `npm run test:integration`
+    passed with 7 live integration tests; `npm run build` passed. Live tests did not confirm revision acknowledgement.
 - [x] Phase 6.1: Raw Result browser contract
   - Branch: `phase-6.1-raw-results`.
   - Context: Refactored `@rhanna/noc-browser` public return contracts to use

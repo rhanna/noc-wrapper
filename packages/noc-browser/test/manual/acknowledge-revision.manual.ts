@@ -8,6 +8,11 @@ import {
   type NocRevisionDayRaw,
 } from "../../src/index.js";
 
+interface RevisionSectionSummary {
+  readonly header: string;
+  readonly rows: readonly NocRevisionActivityRaw[];
+}
+
 const DEFAULT_BASE_URL = "https://poe.noc.vmc.navblue.cloud/RaidoMobile";
 
 for (const path of [".env.test.local", ".env.test", ".env"]) {
@@ -32,19 +37,19 @@ async function main(): Promise<void> {
   await browser.authenticate(process.env.NOC_USERNAME, process.env.NOC_PASSWORD);
 
   const revision = await browser.getRevision();
-  const changedDays = revision.days.filter((day) => day.activities.length > 0);
+  const changedDays = revision.days.filter((day) => getRevisionSections(day).length > 0);
   const firstChangedDay = changedDays[0];
-  const firstActivity = firstChangedDay?.activities[0];
+  const firstSection = firstChangedDay ? getRevisionSections(firstChangedDay)[0] : undefined;
+  const firstActivity = firstSection?.rows[0];
 
   assert.match(revision.currentUrl, /HumanResourceMyRevision\.aspx/);
   assert.equal(revision.revisionAckRequired, true);
   assert.ok(changedDays.length > 0, "Expected at least one changed revision day");
   assert.ok(firstChangedDay?.date, "Expected first changed day to have a date");
-  assert.ok(firstChangedDay.revision.length > 0, "Expected revision rows");
-  assert.ok(firstChangedDay.current.length > 0, "Expected current rows");
-  assert.ok(firstActivity && firstActivity.headers.length > 0, "Expected activity headers");
-  assert.ok(firstActivity.values.length > 0, "Expected activity values");
-  assert.ok(Object.keys(firstActivity.fields).length > 0, "Expected activity fields");
+  assert.ok(firstSection, "Expected at least one revision section");
+  assert.ok(firstSection.rows.length > 0, "Expected section rows");
+  assert.ok(firstActivity, "Expected first activity row");
+  assert.ok(Object.keys(firstActivity).length > 0, "Expected activity fields");
 
   printRevisionSummary(revision.currentUrl, changedDays);
 
@@ -80,9 +85,10 @@ function printRevisionSummary(currentUrl: string, changedDays: readonly NocRevis
   console.log(`Changed days: ${changedDays.length}`);
 
   changedDays.forEach((day, dayIndex) => {
+    const sections = getRevisionSections(day);
+
     console.log(`\nDay ${dayIndex + 1}: ${day.date}`);
-    console.log(`Revision rows: ${day.revision.length}`);
-    console.log(`Current rows: ${day.current.length}`);
+    console.log(`Sections: ${sections.length}`);
 
     if (day.notes.length > 0) {
       console.log("Day notes:");
@@ -91,27 +97,38 @@ function printRevisionSummary(currentUrl: string, changedDays: readonly NocRevis
       });
     }
 
-    day.activities.forEach((activity, activityIndex) => {
-      printActivity(activity, activityIndex);
+    sections.forEach((section) => {
+      console.log(`\n  ${section.header || "(unsectioned)"} rows: ${section.rows.length}`);
+      section.rows.forEach((activity, activityIndex) => {
+        printActivity(activity, activityIndex);
+      });
     });
   });
 }
 
 function printActivity(activity: NocRevisionActivityRaw, activityIndex: number): void {
-  console.log(`\n  Activity ${activityIndex + 1}`);
-  console.log(`  Section: ${activity.section ?? "(unknown)"}`);
-  console.log(`  Section header: ${activity.sectionHeader ?? "(none)"}`);
-  console.log(`  Headers: ${JSON.stringify(activity.headers)}`);
-  console.log(`  Values: ${JSON.stringify(activity.values)}`);
-  console.log("  Fields:");
-  console.log(indent(JSON.stringify(activity.fields, null, 2), "    "));
+  console.log(`\n    Activity ${activityIndex + 1}`);
+  console.log(indent(JSON.stringify(activity, null, 2), "      "));
+}
 
-  if (activity.notes.length > 0) {
-    console.log("  Notes:");
-    activity.notes.forEach((note, noteIndex) => {
-      console.log(`    ${noteIndex + 1}. ${note}`);
-    });
+function getRevisionSections(day: NocRevisionDayRaw): readonly RevisionSectionSummary[] {
+  const sections: RevisionSectionSummary[] = [];
+
+  for (const [header, value] of Object.entries(day)) {
+    if (header !== "date" && header !== "notes" && isActivityRows(value)) {
+      sections.push({ header, rows: value });
+    }
   }
+
+  return sections;
+}
+
+function isActivityRows(value: unknown): value is readonly NocRevisionActivityRaw[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((row) => typeof row === "object" && row !== null && !Array.isArray(row))
+  );
 }
 
 function indent(text: string, prefix: string): string {

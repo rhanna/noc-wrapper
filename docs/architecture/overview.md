@@ -81,11 +81,12 @@ acknowledgement-required state.
 - `confirmRevision()` posts `ctl00$MasterMain$btnConfirm = Confirm` and verifies whether acknowledgement remains
   required after the POST
 
-Parsed revision days preserve the page shape closely as `NocRevisionResultRaw`: each day exposes `date`, `revision`,
-`current`, flat `activities`, and day-level `notes`. Revision section headers `Revision` and `New` map to `revision`;
-`Current`, `Previous`, and `Old` map to `current`. Activities keep the original section header, table headers, detail
-values, header/value fields, and notes. Live integration tests never call `confirmRevision()` so they cannot acknowledge a
-real revision.
+Parsed revision days preserve the page shape closely as `NocRevisionResultRaw`: each day exposes fixed `date` and
+day-level `notes` fields plus dynamic top-level arrays keyed by the exact NOC `.ItemDetailsHeader` text. Activity rows are
+HTML table-to-JSON extraction: `.ItemChildHeader td` cell text becomes row object keys, and matching `.ItemChildDetails td`
+cell text becomes string values. The browser does not map `Revision`, `Current`, `New`, `Previous`, `Old`, or any other NOC
+section header into semantic names; that interpretation belongs in `noc-client`. Live integration tests never call
+`confirmRevision()` so they cannot acknowledge a real revision.
 
 `NocBrowser` implements the low-level Roster WebMethod group:
 
