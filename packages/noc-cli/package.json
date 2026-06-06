@@ -5,7 +5,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "noc": "./dist/index.js"
+    "noc-browser": "./dist/noc-browser.js",
+    "noc-client": "./dist/noc-client.js"
   },
   "exports": {
     ".": {
