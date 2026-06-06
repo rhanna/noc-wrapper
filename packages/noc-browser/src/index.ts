@@ -8,49 +8,55 @@ export {
   NocJsonError,
   NocRevisionAckRequiredError,
 } from "./errors.js";
-export type { NocAuthenticationResult } from "./noc-auth.js";
+export type { NocAuthenticationResultRaw } from "./noc-auth.js";
 export type {
   NocNetReserveOptions,
-  NocNetReserveResult,
+  NocNetReserveResultRaw,
   NocOpenTimeBaseOptions,
-  NocOpenTimePairingsBlockDetailsResult,
-  NocOpenTimePairingsLegalityValuesResult,
-  NocOpenTimePairingsResult,
+  NocOpenTimePairingsBlockDetailsResultRaw,
+  NocOpenTimePairingsLegalityValuesResultRaw,
+  NocOpenTimePairingsResultRaw,
   NocOpenTimeRawObject,
-  NocOpenTimeRosterLegalityValuesResult,
-  NocOpenTimeRosterResult,
-  NocOpenTimeUserContextResult,
+  NocOpenTimeRosterLegalityValuesResultRaw,
+  NocOpenTimeRosterResultRaw,
+  NocOpenTimeUserContextResultRaw,
 } from "./noc-open-time.js";
 export type {
-  NocCrewOnBoardDetailsResult,
-  NocCurrentUserInfoResult,
-  NocHumanResourcesResult,
+  NocCrewOnBoardDetailsResultRaw,
+  NocCurrentUserInfoResultRaw,
+  NocHumanResourcesResultRaw,
   NocRosterOptions,
   NocRosterRawObject,
-  NocRosterResult,
-  NocRosterMonthlyAccumulatedValue,
-  NocRosterMonthlyAccumulatedValuesResult,
+  NocRosterResultRaw,
+  NocRosterMonthlyAccumulatedValueRaw,
+  NocRosterMonthlyAccumulatedValuesResultRaw,
 } from "./noc-roster.js";
-export type { RevisionAckDetails } from "./noc-revision-ack.js";
+export type { NocRevisionAckDetailsRaw } from "./noc-revision-ack.js";
 export type {
-  NocConfirmRevisionResult,
-  NocRevisionResult,
-  NocRevisionActivity,
-  NocRevisionDay,
-  NocRevisionSection,
+  NocConfirmRevisionResultRaw,
+  NocRevisionResultRaw,
+  NocRevisionActivityRaw,
+  NocRevisionDayRaw,
+  NocRevisionSectionRaw,
 } from "./noc-revision-page.js";
 export { StationOpsSort, StationOpsTimeMode } from "./noc-station-ops.js";
 export type {
-  NocStationOpsArrival,
-  NocStationOpsArrivalHeader,
-  NocStationOpsDeparture,
-  NocStationOpsDepartureHeader,
-  NocStationOpsDetailRow,
-  NocStationOpsDetails,
+  NocStationOpsArrivalRaw,
+  NocStationOpsArrivalHeaderRaw,
+  NocStationOpsDepartureRaw,
+  NocStationOpsDepartureHeaderRaw,
+  NocStationOpsDetailRowRaw,
+  NocStationOpsDetailsRaw,
   NocStationOpsOptions,
-  NocStationOpsResult,
+  NocStationOpsResultRaw,
   StationOpsDateInput,
 } from "./noc-station-ops.js";
-export type { BrowserOptions as NocBrowserOptions } from "./types.js";
+export type {
+  BrowserOptions as NocBrowserOptions,
+  NocJsonArray,
+  NocJsonObject,
+  NocJsonPrimitive,
+  NocJsonValue,
+} from "./types.js";
 
 export default NocBrowser;

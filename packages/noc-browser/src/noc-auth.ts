@@ -4,17 +4,17 @@ import { NocBrowserPage } from "./noc-browser-page.js";
 import {
   hasRevisionAckRequiredHtml,
   parseRevisionAckDetails,
-  type RevisionAckDetails,
+  type NocRevisionAckDetailsRaw,
 } from "./noc-revision-ack.js";
 import type { NocBrowser } from "./noc-browser.js";
 import { isDefaultPageUrl, isRevisionRequiredPage, LOGIN_PATH } from "./lib/noc-url-utils.js";
 import { firstText } from "./lib/noc-parse-utils.js";
 
-export interface NocAuthenticationResult {
+export interface NocAuthenticationResultRaw {
   readonly authenticated: true;
   readonly currentUrl: string;
   readonly revisionAckRequired: boolean;
-  readonly revisionAckDetails?: RevisionAckDetails;
+  readonly revisionAckDetails?: NocRevisionAckDetailsRaw;
 }
 
 export class NocLoginPage extends NocBrowserPage {
@@ -22,7 +22,7 @@ export class NocLoginPage extends NocBrowserPage {
     super(browser, LOGIN_PATH);
   }
 
-  async authenticate(username: string, password: string): Promise<NocAuthenticationResult> {
+  async authenticate(username: string, password: string): Promise<NocAuthenticationResultRaw> {
     if (!username) {
       throw new NocAuthenticationError("NOC username is required");
     }

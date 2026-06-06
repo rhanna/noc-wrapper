@@ -2,11 +2,11 @@ import makeFetchCookie from "fetch-cookie";
 import { CookieJar } from "tough-cookie";
 import { NocHttpError, NocJsonError } from "../../errors.js";
 import type {
+  BrowserOptions,
   FetchLike,
   FormFields,
   HtmlResponse,
-  JsonObject,
-  BrowserOptions,
+  NocJsonObject,
 } from "../../types.js";
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
@@ -51,7 +51,7 @@ export abstract class AbstractBrowser {
 
   async postWebMethod<T = unknown>(
     pathOrUrl: string,
-    payload: JsonObject,
+    payload: NocJsonObject,
     headers: HeadersInit = {},
   ): Promise<T> {
     const json = await this.requestJson<unknown>(pathOrUrl, {

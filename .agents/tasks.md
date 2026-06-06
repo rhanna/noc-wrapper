@@ -7,6 +7,17 @@
 - [ ] Future improvement
 
 ## Done
+- [x] Phase 6.1: Raw Result browser contract
+  - Branch: `phase-6.1-raw-results`.
+  - Context: Refactored `@rhanna/noc-browser` public return contracts to use
+    `ResultRaw` naming for raw JSON-compatible browser outputs, reserving
+    unsuffixed `Result` names for semantically interpreted `noc-client`
+    structures.
+  - Files: browser output/export types, unit/integration tests,
+    `.agents/AGENTS.md`, `docs/architecture/overview.md`, `.agents/tasks.md`.
+  - Verification: `npm run format` passed; `npm run test:unit` passed with 52
+    unit tests; `npm run test:integration` passed with 7 live integration tests;
+    `npm run build` passed. Live tests did not confirm revision acknowledgement.
 - [x] Phase 6: `noc-browser` Station Operations
   - Context: Implemented page-backed Station Operations with cached form state,
     exact NOC form posts, date formatting, station ID/code selection, structured

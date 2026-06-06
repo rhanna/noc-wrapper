@@ -3,7 +3,7 @@ import { firstText } from "./lib/noc-parse-utils.js";
 
 const CONFIRM_BUTTON_SELECTOR = '#MasterMain_btnConfirm, input[name="ctl00$MasterMain$btnConfirm"]';
 
-export interface RevisionAckDetails {
+export interface NocRevisionAckDetailsRaw {
   readonly currentUrl: string;
   readonly title?: string;
   readonly message?: string;
@@ -15,7 +15,10 @@ export function hasRevisionAckRequiredHtml(html: string): boolean {
   return $(CONFIRM_BUTTON_SELECTOR).length > 0;
 }
 
-export function parseRevisionAckDetails(html: string, currentUrl: string): RevisionAckDetails {
+export function parseRevisionAckDetails(
+  html: string,
+  currentUrl: string,
+): NocRevisionAckDetailsRaw {
   const $ = load(html);
   const title = firstText($, "h1, h2, .Title, .PageTitle, #MasterMain_lblTitle");
   const message = firstText(

@@ -8,16 +8,16 @@ import { NocBrowserPage } from "./noc-browser-page.js";
 import {
   hasRevisionAckRequiredHtml,
   parseRevisionAckDetails,
-  type RevisionAckDetails,
+  type NocRevisionAckDetailsRaw,
 } from "./noc-revision-ack.js";
 import type { NocBrowser } from "./noc-browser.js";
 
 const CONFIRM_REVISION_FIELD = "ctl00$MasterMain$btnConfirm";
 
-export type NocRevisionSection = "revision" | "current";
+export type NocRevisionSectionRaw = "revision" | "current";
 
-export interface NocRevisionActivity {
-  readonly section?: NocRevisionSection;
+export interface NocRevisionActivityRaw {
+  readonly section?: NocRevisionSectionRaw;
   readonly sectionHeader?: string;
   readonly headers: readonly string[];
   readonly values: readonly string[];
@@ -25,26 +25,26 @@ export interface NocRevisionActivity {
   readonly notes: readonly string[];
 }
 
-export interface NocRevisionDay {
+export interface NocRevisionDayRaw {
   readonly date: string;
-  readonly revision: readonly NocRevisionActivity[];
-  readonly current: readonly NocRevisionActivity[];
-  readonly activities: readonly NocRevisionActivity[];
+  readonly revision: readonly NocRevisionActivityRaw[];
+  readonly current: readonly NocRevisionActivityRaw[];
+  readonly activities: readonly NocRevisionActivityRaw[];
   readonly notes: readonly string[];
 }
 
-export interface NocRevisionResult {
+export interface NocRevisionResultRaw {
   readonly currentUrl: string;
   readonly revisionAckRequired: boolean;
-  readonly revisionAckDetails?: RevisionAckDetails;
-  readonly days: readonly NocRevisionDay[];
+  readonly revisionAckDetails?: NocRevisionAckDetailsRaw;
+  readonly days: readonly NocRevisionDayRaw[];
 }
 
-export interface NocConfirmRevisionResult {
+export interface NocConfirmRevisionResultRaw {
   readonly currentUrl: string;
   readonly confirmed: boolean;
   readonly revisionAckRequired: boolean;
-  readonly revisionAckDetails?: RevisionAckDetails;
+  readonly revisionAckDetails?: NocRevisionAckDetailsRaw;
 }
 
 export class NocRevisionPage extends NocBrowserPage {
@@ -52,7 +52,7 @@ export class NocRevisionPage extends NocBrowserPage {
     super(browser, REVISION_PATH);
   }
 
-  async getRevision(): Promise<NocRevisionResult> {
+  async getRevision(): Promise<NocRevisionResultRaw> {
     await this.load({ refresh: true });
     this.assertLoadedRevisionPage();
     return this.toRevisionResult();
@@ -64,7 +64,7 @@ export class NocRevisionPage extends NocBrowserPage {
     return hasRevisionAckRequiredHtml(this.html);
   }
 
-  async confirmRevision(): Promise<NocConfirmRevisionResult> {
+  async confirmRevision(): Promise<NocConfirmRevisionResultRaw> {
     await this.load({ refresh: true });
     this.assertLoadedRevisionPage();
 
@@ -95,7 +95,7 @@ export class NocRevisionPage extends NocBrowserPage {
     };
   }
 
-  private toRevisionResult(): NocRevisionResult {
+  private toRevisionResult(): NocRevisionResultRaw {
     const revisionAckRequired = hasRevisionAckRequiredHtml(this.html);
 
     return {
@@ -123,7 +123,7 @@ export class NocRevisionPage extends NocBrowserPage {
   }
 }
 
-export function parseRevisionDays(html: string): readonly NocRevisionDay[] {
+export function parseRevisionDays(html: string): readonly NocRevisionDayRaw[] {
   const $ = load(html);
 
   return $(".ListItem")
@@ -131,18 +131,18 @@ export function parseRevisionDays(html: string): readonly NocRevisionDay[] {
     .map((dayElement) => parseRevisionDay($, $(dayElement)));
 }
 
-function parseRevisionDay($: CheerioAPI, $day: Cheerio<AnyNode>): NocRevisionDay {
+function parseRevisionDay($: CheerioAPI, $day: Cheerio<AnyNode>): NocRevisionDayRaw {
   const date = textFrom($day.find(".ItemDayHeader").first());
-  const revision: NocRevisionActivity[] = [];
-  const current: NocRevisionActivity[] = [];
-  const activities: NocRevisionActivity[] = [];
+  const revision: NocRevisionActivityRaw[] = [];
+  const current: NocRevisionActivityRaw[] = [];
+  const activities: NocRevisionActivityRaw[] = [];
   const notes = $day
     .children(".ItemNotes")
     .toArray()
     .map((noteElement) => textFrom($(noteElement)))
     .filter(Boolean);
 
-  let activeSection: NocRevisionSection | undefined;
+  let activeSection: NocRevisionSectionRaw | undefined;
   let activeSectionHeader: string | undefined;
 
   $day.find(".ItemDetailsHeader, .ItemChildHolder").each((_, element) => {
@@ -183,9 +183,9 @@ function parseRevisionDay($: CheerioAPI, $day: Cheerio<AnyNode>): NocRevisionDay
 function parseActivityHolder(
   $: CheerioAPI,
   $holder: Cheerio<AnyNode>,
-  section: NocRevisionSection | undefined,
+  section: NocRevisionSectionRaw | undefined,
   sectionHeader: string | undefined,
-): readonly NocRevisionActivity[] {
+): readonly NocRevisionActivityRaw[] {
   const headers = $holder
     .find(".ItemChildHeader td")
     .toArray()
@@ -240,7 +240,7 @@ function mapHeadersToValues(
   }, {});
 }
 
-function mapRevisionSection(header: string | undefined): NocRevisionSection | undefined {
+function mapRevisionSection(header: string | undefined): NocRevisionSectionRaw | undefined {
   if (!header) {
     return undefined;
   }

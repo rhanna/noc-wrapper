@@ -7,7 +7,7 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
 
   Core requirements:
   - Use TypeScript or fully type-safe JavaScript patterns for all code.
-  - Define explicit types/interfaces for public API inputs, outputs, page wrappers, errors, and parsed page structures.
+  - Define explicit types/interfaces for public API inputs, raw outputs, page wrappers, errors, and parsed page structures.
   - Avoid `any` except at raw NOC payload boundaries.
   - Use `fetch-cookie` to wrap `fetch` and maintain cookies/session state.
   - Support ASP.NET Web Forms:
@@ -15,7 +15,10 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
     - preserve and repost hidden fields such as `__VIEWSTATE`, `__VIEWSTATEGENERATOR`, `__EVENTVALIDATION`
     - preserve form state between posts where page-backed APIs require it
   - Unwrap ASP.NET JSON WebMethod responses shaped as `{ d: ... }`.
-  - Return NOC payloads as-is after `.d` unwrapping.
+  - Return NOC JSON payloads as-is after `.d` unwrapping.
+  - Parse HTML-backed flows only into raw JSON-compatible structures that preserve the NOC page shape.
+  - Name all `noc-browser` public output contracts with a `ResultRaw` suffix.
+  - Reserve unsuffixed `Result` names for `noc-client` semantically interpreted/domain structures.
   - Do not normalize, enrich, rename, sort, filter, or transform NOC data.
   - Do not infer client intent.
   - Do not add retry logic.
@@ -66,7 +69,7 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
   - parse the returned HTML to extract and include the NOC-reported login error message
   - if authentication succeeds but lands on revision acknowledgement, return revisionAckRequired: true and parsed revision
     details
-  - return typed authentication result on success
+  - return typed raw authentication result on success
 
   Revision APIs:
   Implement:
@@ -251,8 +254,8 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
   - use NOC form field names exactly
   - stationId should be posted directly when provided
   - stationCode may be resolved from the NOC station dropdown only when the caller explicitly provides stationCode
-  - return parsed departures and arrivals separately
-  - keep parsed row fields close to the NOC page structure
+  - return raw parsed departures and arrivals separately
+  - keep parsed row fields close to the NOC page structure as JSON-compatible values
   - do not swap, infer, enrich, or normalize station fields
   - if redirected to revision acknowledgement and Station Ops cannot complete, throw NocRevisionAckRequiredError
 
@@ -359,4 +362,4 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
   Important design rule:
   NocBrowser is not a product abstraction. It is a faithful low-level NOC portal interaction layer. If a feature requires
   interpreting, sorting, enriching, convenience lookup, retrying, or deciding what the user probably wants, do not put that
-  behavior in NocBrowser.
+  behavior in NocBrowser. Browser result types must use `ResultRaw`; semantic `Result` types belong in `noc-client`.

@@ -2,12 +2,11 @@ import { NocBrowserError, NocJsonError, NocRevisionAckRequiredError } from "./er
 import { REVISION_PATH } from "./lib/noc-url-utils.js";
 import type { NocBrowser } from "./noc-browser.js";
 import { hasRevisionAckRequiredHtml, parseRevisionAckDetails } from "./noc-revision-ack.js";
+import type { NocJsonObject } from "./types.js";
 
 const OPEN_TIME_API_PATH = "/api/open-time";
 
-export interface NocOpenTimeRawObject {
-  readonly [key: string]: unknown;
-}
+export type NocOpenTimeRawObject = NocJsonObject;
 
 export interface NocOpenTimeBaseOptions {
   readonly baseId: number;
@@ -17,18 +16,18 @@ export interface NocNetReserveOptions {
   readonly isSap?: boolean;
 }
 
-export type NocOpenTimeUserContextResult = NocOpenTimeRawObject;
-export type NocOpenTimeRosterResult = NocOpenTimeRawObject;
-export type NocOpenTimeRosterLegalityValuesResult = NocOpenTimeRawObject;
-export type NocOpenTimePairingsResult = NocOpenTimeRawObject;
-export type NocOpenTimePairingsLegalityValuesResult = NocOpenTimeRawObject;
-export type NocOpenTimePairingsBlockDetailsResult = NocOpenTimeRawObject;
-export type NocNetReserveResult = NocOpenTimeRawObject;
+export type NocOpenTimeUserContextResultRaw = NocOpenTimeRawObject;
+export type NocOpenTimeRosterResultRaw = NocOpenTimeRawObject;
+export type NocOpenTimeRosterLegalityValuesResultRaw = NocOpenTimeRawObject;
+export type NocOpenTimePairingsResultRaw = NocOpenTimeRawObject;
+export type NocOpenTimePairingsLegalityValuesResultRaw = NocOpenTimeRawObject;
+export type NocOpenTimePairingsBlockDetailsResultRaw = NocOpenTimeRawObject;
+export type NocNetReserveResultRaw = NocOpenTimeRawObject;
 
 export async function getOpenTimeUserContext(
   browser: NocBrowser,
-): Promise<NocOpenTimeUserContextResult> {
-  return getOpenTimeJsonApi<NocOpenTimeUserContextResult>(
+): Promise<NocOpenTimeUserContextResultRaw> {
+  return getOpenTimeJsonApi<NocOpenTimeUserContextResultRaw>(
     browser,
     `${OPEN_TIME_API_PATH}/user-context`,
   );
@@ -37,10 +36,10 @@ export async function getOpenTimeUserContext(
 export async function getOpenTimeRoster(
   browser: NocBrowser,
   options: NocOpenTimeBaseOptions,
-): Promise<NocOpenTimeRosterResult> {
+): Promise<NocOpenTimeRosterResultRaw> {
   validateBaseOptions(options);
 
-  return getOpenTimeJsonApi<NocOpenTimeRosterResult>(
+  return getOpenTimeJsonApi<NocOpenTimeRosterResultRaw>(
     browser,
     `${OPEN_TIME_API_PATH}/rosters/1?baseId=${options.baseId}`,
   );
@@ -49,10 +48,10 @@ export async function getOpenTimeRoster(
 export async function getOpenTimeRosterLegalityValues(
   browser: NocBrowser,
   options: NocOpenTimeBaseOptions,
-): Promise<NocOpenTimeRosterLegalityValuesResult> {
+): Promise<NocOpenTimeRosterLegalityValuesResultRaw> {
   validateBaseOptions(options);
 
-  return getOpenTimeJsonApi<NocOpenTimeRosterLegalityValuesResult>(
+  return getOpenTimeJsonApi<NocOpenTimeRosterLegalityValuesResultRaw>(
     browser,
     `${OPEN_TIME_API_PATH}/rosters/1/legality?baseId=${options.baseId}`,
   );
@@ -61,10 +60,10 @@ export async function getOpenTimeRosterLegalityValues(
 export async function getOpenTimePairings(
   browser: NocBrowser,
   options: NocOpenTimeBaseOptions,
-): Promise<NocOpenTimePairingsResult> {
+): Promise<NocOpenTimePairingsResultRaw> {
   validateBaseOptions(options);
 
-  return getOpenTimeJsonApi<NocOpenTimePairingsResult>(
+  return getOpenTimeJsonApi<NocOpenTimePairingsResultRaw>(
     browser,
     `${OPEN_TIME_API_PATH}/rosters/2?baseId=${options.baseId}`,
   );
@@ -73,10 +72,10 @@ export async function getOpenTimePairings(
 export async function getOpenTimePairingsLegalityValues(
   browser: NocBrowser,
   options: NocOpenTimeBaseOptions,
-): Promise<NocOpenTimePairingsLegalityValuesResult> {
+): Promise<NocOpenTimePairingsLegalityValuesResultRaw> {
   validateBaseOptions(options);
 
-  return getOpenTimeJsonApi<NocOpenTimePairingsLegalityValuesResult>(
+  return getOpenTimeJsonApi<NocOpenTimePairingsLegalityValuesResultRaw>(
     browser,
     `${OPEN_TIME_API_PATH}/rosters/2/legality?baseId=${options.baseId}`,
   );
@@ -85,10 +84,10 @@ export async function getOpenTimePairingsLegalityValues(
 export async function getOpenTimePairingsBlockDetails(
   browser: NocBrowser,
   pairingId: number,
-): Promise<NocOpenTimePairingsBlockDetailsResult> {
+): Promise<NocOpenTimePairingsBlockDetailsResultRaw> {
   validatePositiveInteger("pairingId", pairingId);
 
-  return getOpenTimeJsonApi<NocOpenTimePairingsBlockDetailsResult>(
+  return getOpenTimeJsonApi<NocOpenTimePairingsBlockDetailsResultRaw>(
     browser,
     `${OPEN_TIME_API_PATH}/rosters/2/block-details/${pairingId}`,
   );
@@ -97,7 +96,7 @@ export async function getOpenTimePairingsBlockDetails(
 export async function getNetReserve(
   browser: NocBrowser,
   options: NocNetReserveOptions = {},
-): Promise<NocNetReserveResult> {
+): Promise<NocNetReserveResultRaw> {
   if (typeof options !== "object" || options === null || Array.isArray(options)) {
     throw new NocBrowserError("NOC Net Reserve options must be an object");
   }
@@ -108,7 +107,7 @@ export async function getNetReserve(
     throw new NocBrowserError("NOC Net Reserve isSap must be a boolean");
   }
 
-  return getOpenTimeJsonApi<NocNetReserveResult>(
+  return getOpenTimeJsonApi<NocNetReserveResultRaw>(
     browser,
     `${OPEN_TIME_API_PATH}/net-reserve?isSap=${isSap}`,
   );

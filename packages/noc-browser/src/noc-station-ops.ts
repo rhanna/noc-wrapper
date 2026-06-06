@@ -38,24 +38,24 @@ export interface NocStationOpsOptions {
   readonly refreshPage?: boolean;
 }
 
-export interface NocStationOpsResult {
+export interface NocStationOpsResultRaw {
   readonly departuresLabel?: string;
   readonly arrivalsLabel?: string;
-  readonly departures: readonly NocStationOpsDeparture[];
-  readonly arrivals: readonly NocStationOpsArrival[];
+  readonly departures: readonly NocStationOpsDepartureRaw[];
+  readonly arrivals: readonly NocStationOpsArrivalRaw[];
 }
 
-export interface NocStationOpsDeparture {
-  readonly header: NocStationOpsDepartureHeader;
-  readonly details: NocStationOpsDetails;
+export interface NocStationOpsDepartureRaw {
+  readonly header: NocStationOpsDepartureHeaderRaw;
+  readonly details: NocStationOpsDetailsRaw;
 }
 
-export interface NocStationOpsArrival {
-  readonly header: NocStationOpsArrivalHeader;
-  readonly details: NocStationOpsDetails;
+export interface NocStationOpsArrivalRaw {
+  readonly header: NocStationOpsArrivalHeaderRaw;
+  readonly details: NocStationOpsDetailsRaw;
 }
 
-export interface NocStationOpsDepartureHeader {
+export interface NocStationOpsDepartureHeaderRaw {
   readonly flightNum: string;
   readonly STD: string;
   readonly ATD: string;
@@ -67,7 +67,7 @@ export interface NocStationOpsDepartureHeader {
   readonly raw: readonly string[];
 }
 
-export interface NocStationOpsArrivalHeader {
+export interface NocStationOpsArrivalHeaderRaw {
   readonly flightNum: string;
   readonly STA: string;
   readonly ATA: string;
@@ -79,7 +79,7 @@ export interface NocStationOpsArrivalHeader {
   readonly raw: readonly string[];
 }
 
-export interface NocStationOpsDetails {
+export interface NocStationOpsDetailsRaw {
   readonly date?: string;
   readonly departure?: string;
   readonly arrival?: string;
@@ -94,10 +94,10 @@ export interface NocStationOpsDetails {
   readonly delay?: string;
   readonly pax?: string;
   readonly notes?: string;
-  readonly raw: readonly NocStationOpsDetailRow[];
+  readonly raw: readonly NocStationOpsDetailRowRaw[];
 }
 
-export interface NocStationOpsDetailRow {
+export interface NocStationOpsDetailRowRaw {
   readonly label: string;
   readonly value: string;
 }
@@ -112,7 +112,7 @@ export class NocStationOpsPage extends NocBrowserPage {
     super(browser, STATION_OPS_PATH);
   }
 
-  async getStationOps(options: NocStationOpsOptions): Promise<NocStationOpsResult> {
+  async getStationOps(options: NocStationOpsOptions): Promise<NocStationOpsResultRaw> {
     const normalizedOptions = validateStationOpsOptions(options);
     await this.load({ refresh: normalizedOptions.refreshPage });
     this.throwIfRevisionAckRequired();
@@ -160,7 +160,7 @@ export class NocStationOpsPage extends NocBrowserPage {
     throw new NocBrowserError(`NOC Station Ops stationCode was not found: ${stationCode}`);
   }
 
-  private parseResults(): NocStationOpsResult {
+  private parseResults(): NocStationOpsResultRaw {
     const $ = load(this.html);
 
     return {
@@ -239,13 +239,13 @@ function parsePanel(
   $: LoadedCheerio,
   selector: string,
   type: "departure",
-): NocStationOpsDeparture[];
-function parsePanel($: LoadedCheerio, selector: string, type: "arrival"): NocStationOpsArrival[];
+): NocStationOpsDepartureRaw[];
+function parsePanel($: LoadedCheerio, selector: string, type: "arrival"): NocStationOpsArrivalRaw[];
 function parsePanel(
   $: LoadedCheerio,
   selector: string,
   type: "departure" | "arrival",
-): Array<NocStationOpsDeparture | NocStationOpsArrival> {
+): Array<NocStationOpsDepartureRaw | NocStationOpsArrivalRaw> {
   const rows = $(selector).find(".ListItem").toArray();
 
   if (type === "departure") {
@@ -255,7 +255,10 @@ function parsePanel(
   return rows.map((item) => parseArrivalRow($, item));
 }
 
-function parseDepartureRow($: LoadedCheerio, item: CheerioAcceptedElement): NocStationOpsDeparture {
+function parseDepartureRow(
+  $: LoadedCheerio,
+  item: CheerioAcceptedElement,
+): NocStationOpsDepartureRaw {
   const { rawHeader, color, details } = parseRowParts($, item);
 
   return {
@@ -274,7 +277,7 @@ function parseDepartureRow($: LoadedCheerio, item: CheerioAcceptedElement): NocS
   };
 }
 
-function parseArrivalRow($: LoadedCheerio, item: CheerioAcceptedElement): NocStationOpsArrival {
+function parseArrivalRow($: LoadedCheerio, item: CheerioAcceptedElement): NocStationOpsArrivalRaw {
   const { rawHeader, color, details } = parseRowParts($, item);
 
   return {
@@ -299,7 +302,7 @@ function parseRowParts(
 ): {
   readonly rawHeader: readonly string[];
   readonly color: string;
-  readonly details: NocStationOpsDetails;
+  readonly details: NocStationOpsDetailsRaw;
 } {
   const $item = $(item);
   const $header = $item.find(".ItemHeader").first();
@@ -313,9 +316,9 @@ function parseRowParts(
   return { rawHeader, color, details };
 }
 
-function parseDetails($: LoadedCheerio, detailsTable: CheerioSelection): NocStationOpsDetails {
+function parseDetails($: LoadedCheerio, detailsTable: CheerioSelection): NocStationOpsDetailsRaw {
   const values: Record<string, string> = {};
-  const raw: NocStationOpsDetailRow[] = [];
+  const raw: NocStationOpsDetailRowRaw[] = [];
 
   detailsTable.find("tr").each((_, row) => {
     const cells = $(row).find("td");
@@ -493,6 +496,6 @@ function isStationOpsTimeMode(value: unknown): value is StationOpsTimeMode {
 export function getStationOps(
   page: NocStationOpsPage,
   options: NocStationOpsOptions,
-): Promise<NocStationOpsResult> {
+): Promise<NocStationOpsResultRaw> {
   return page.getStationOps(options);
 }

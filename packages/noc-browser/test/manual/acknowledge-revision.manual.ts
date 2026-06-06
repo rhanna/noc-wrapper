@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { config as loadDotenv } from "dotenv";
-import { NocBrowser, type NocRevisionActivity, type NocRevisionDay } from "../../src/index.js";
+import {
+  NocBrowser,
+  type NocRevisionActivityRaw,
+  type NocRevisionDayRaw,
+} from "../../src/index.js";
 
 const DEFAULT_BASE_URL = "https://poe.noc.vmc.navblue.cloud/RaidoMobile";
 
@@ -70,7 +74,7 @@ async function promptForConfirm(): Promise<string> {
   }
 }
 
-function printRevisionSummary(currentUrl: string, changedDays: readonly NocRevisionDay[]): void {
+function printRevisionSummary(currentUrl: string, changedDays: readonly NocRevisionDayRaw[]): void {
   console.log("\nLive My Revision change detected");
   console.log(`URL: ${currentUrl}`);
   console.log(`Changed days: ${changedDays.length}`);
@@ -93,7 +97,7 @@ function printRevisionSummary(currentUrl: string, changedDays: readonly NocRevis
   });
 }
 
-function printActivity(activity: NocRevisionActivity, activityIndex: number): void {
+function printActivity(activity: NocRevisionActivityRaw, activityIndex: number): void {
   console.log(`\n  Activity ${activityIndex + 1}`);
   console.log(`  Section: ${activity.section ?? "(unknown)"}`);
   console.log(`  Section header: ${activity.sectionHeader ?? "(none)"}`);

@@ -30,6 +30,15 @@ This repository is an npm workspace with three packages:
 The abstract browser and page classes are exported for subclassing but are protected/abstract and also guard against direct
 runtime instantiation.
 
+### Raw Result Contract
+
+`@rhanna/noc-browser` public return types use `ResultRaw` naming. These contracts are raw JSON-compatible browser outputs:
+NOC JSON-backed endpoints return `.d`-unwrapped NOC payloads unchanged, and HTML-backed endpoints parse page HTML into
+raw structured JSON that preserves NOC strings and page shape.
+
+Unsuffixed `Result` names are reserved for `@scope/noc-client`, where semantically interpreted domain objects,
+normalization, parsed dates/times, enriched fields, and caller-friendly workflows will live.
+
 ### HTML Page Interaction Policy
 
 Any NOC interaction that requires loading an HTML page, scraping form state, posting ASP.NET Web Forms fields, following a
@@ -42,8 +51,8 @@ same model: `NocBrowser` owns one page instance and exposes thin delegating meth
 useful.
 
 Direct NOC JSON calls do not need page instances when they do not depend on loaded HTML page state. WebMethods and JSON
-APIs such as `GetRoster`, `GetCurrentUserInfo`, and `GetMonthlyAccumulatedValues` should remain direct browser/client
-calls that use the shared authenticated fetch session.
+APIs such as `GetRoster`, `GetCurrentUserInfo`, and `GetMonthlyAccumulatedValues` remain direct browser/client calls
+that use the shared authenticated fetch session and return raw NOC JSON-compatible result contracts.
 
 `NocBrowser` owns one `NocLoginPage` for `/Default.aspx` and one `NocRevisionPage` for
 `/Grids/HumanResources/HumanResourceMyRevision.aspx`. Browser methods delegate to those persistent page objects while
@@ -67,15 +76,16 @@ acknowledgement-required state.
 `NocRevisionPage` extends `NocBrowserPage` for `/Grids/HumanResources/HumanResourceMyRevision.aspx`.
 `NocBrowser` exposes thin low-level helpers over its revision page instance:
 
-- `getRevision()` always performs a fresh GET and returns the parsed My Revision page state
+- `getRevision()` always performs a fresh GET and returns the raw parsed My Revision page state
 - `hasRevisionAckRequired()` performs a fresh content-based acknowledgement check
 - `confirmRevision()` posts `ctl00$MasterMain$btnConfirm = Confirm` and verifies whether acknowledgement remains
   required after the POST
 
-Parsed revision days preserve the page shape closely: each day exposes `date`, `revision`, `current`, flat `activities`,
-and day-level `notes`. Revision section headers `Revision` and `New` map to `revision`; `Current`, `Previous`, and `Old`
-map to `current`. Activities keep the original section header, table headers, detail values, header/value fields, and
-notes. Live integration tests never call `confirmRevision()` so they cannot acknowledge a real revision.
+Parsed revision days preserve the page shape closely as `NocRevisionResultRaw`: each day exposes `date`, `revision`,
+`current`, flat `activities`, and day-level `notes`. Revision section headers `Revision` and `New` map to `revision`;
+`Current`, `Previous`, and `Old` map to `current`. Activities keep the original section header, table headers, detail
+values, header/value fields, and notes. Live integration tests never call `confirmRevision()` so they cannot acknowledge a
+real revision.
 
 `NocBrowser` implements the low-level Roster WebMethod group:
 
@@ -114,15 +124,15 @@ required inputs and return raw NOC JSON payloads unchanged.
 - posts `stationId` directly or resolves `stationCode` from the page dropdown only when explicitly provided
 - rejects calls that provide both `stationId` and `stationCode`
 
-Station Ops returns departures and arrivals separately. Rows keep NOC values as strings but expose known NOC header and
-detail fields as structured objects. Departure headers expose `flightNum`, `STD`, `ATD`, `dest`, `registration`, `gate`,
-`pax`, `color`, and `raw`; arrival headers expose `flightNum`, `STA`, `ATA`, `origin`, `registration`, `gate`, `pax`,
-`color`, and `raw`. Details expose NOC label-derived fields such as `date`, `departure`, `arrival`, `STD`, `STA`,
-`registration`, `version`, `type`, `depGate`, `arrGate`, `crewOnBoard`, `delay`, `pax`, `notes`, and `raw`. The browser
-does not interpret header colors or normalize row values.
+Station Ops returns `NocStationOpsResultRaw` with departures and arrivals separately. Rows keep NOC values as strings but
+expose known NOC header and detail fields as structured raw JSON objects. Departure headers expose `flightNum`, `STD`,
+`ATD`, `dest`, `registration`, `gate`, `pax`, `color`, and `raw`; arrival headers expose `flightNum`, `STA`, `ATA`,
+`origin`, `registration`, `gate`, `pax`, `color`, and `raw`. Details expose NOC label-derived fields such as `date`,
+`departure`, `arrival`, `STD`, `STA`, `registration`, `version`, `type`, `depGate`, `arrGate`, `crewOnBoard`, `delay`,
+`pax`, `notes`, and `raw`. The browser does not interpret header colors or normalize row values.
 
 ## Package Boundaries
 
 `@rhanna/noc-browser` currently implements reusable browser primitives plus low-level authentication, My Revision, and
-Roster/Open Time/Station Ops APIs. Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred
-to later phases.
+Roster/Open Time/Station Ops APIs. Browser APIs expose `ResultRaw` output contracts only. Domain APIs, normalization,
+formatting, interpreted `Result` types, and CLI behavior are intentionally deferred to later phases.

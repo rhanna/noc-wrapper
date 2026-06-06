@@ -1,5 +1,5 @@
 import { AbstractBrowser } from "./lib/browser/abstract-browser.js";
-import { NocLoginPage, type NocAuthenticationResult } from "./noc-auth.js";
+import { NocLoginPage, type NocAuthenticationResultRaw } from "./noc-auth.js";
 import {
   getNetReserve,
   getOpenTimePairings,
@@ -9,14 +9,14 @@ import {
   getOpenTimeRosterLegalityValues,
   getOpenTimeUserContext,
   type NocNetReserveOptions,
-  type NocNetReserveResult,
+  type NocNetReserveResultRaw,
   type NocOpenTimeBaseOptions,
-  type NocOpenTimePairingsBlockDetailsResult,
-  type NocOpenTimePairingsLegalityValuesResult,
-  type NocOpenTimePairingsResult,
-  type NocOpenTimeRosterLegalityValuesResult,
-  type NocOpenTimeRosterResult,
-  type NocOpenTimeUserContextResult,
+  type NocOpenTimePairingsBlockDetailsResultRaw,
+  type NocOpenTimePairingsLegalityValuesResultRaw,
+  type NocOpenTimePairingsResultRaw,
+  type NocOpenTimeRosterLegalityValuesResultRaw,
+  type NocOpenTimeRosterResultRaw,
+  type NocOpenTimeUserContextResultRaw,
 } from "./noc-open-time.js";
 import {
   getCrewOnBoardDetails,
@@ -24,23 +24,23 @@ import {
   getHumanResources,
   getRoster,
   getRosterMonthlyAccumulatedValues,
-  type NocCrewOnBoardDetailsResult,
-  type NocCurrentUserInfoResult,
-  type NocHumanResourcesResult,
+  type NocCrewOnBoardDetailsResultRaw,
+  type NocCurrentUserInfoResultRaw,
+  type NocHumanResourcesResultRaw,
   type NocRosterOptions,
-  type NocRosterMonthlyAccumulatedValuesResult,
-  type NocRosterResult,
+  type NocRosterMonthlyAccumulatedValuesResultRaw,
+  type NocRosterResultRaw,
 } from "./noc-roster.js";
 import {
   NocRevisionPage,
-  type NocConfirmRevisionResult,
-  type NocRevisionResult,
+  type NocConfirmRevisionResultRaw,
+  type NocRevisionResultRaw,
 } from "./noc-revision-page.js";
 import {
   getStationOps,
   NocStationOpsPage,
   type NocStationOpsOptions,
-  type NocStationOpsResult,
+  type NocStationOpsResultRaw,
 } from "./noc-station-ops.js";
 import type { BrowserOptions } from "./types.js";
 
@@ -77,75 +77,77 @@ export class NocBrowser extends AbstractBrowser {
     this.#stationOpsPage = new NocStationOpsPage(this);
   }
 
-  async authenticate(username: string, password: string): Promise<NocAuthenticationResult> {
+  async authenticate(username: string, password: string): Promise<NocAuthenticationResultRaw> {
     return this.#loginPage.authenticate(username, password);
   }
 
-  async getHumanResources(): Promise<NocHumanResourcesResult> {
+  async getHumanResources(): Promise<NocHumanResourcesResultRaw> {
     return getHumanResources(this);
   }
 
-  async getCurrentUserInfo(): Promise<NocCurrentUserInfoResult> {
+  async getCurrentUserInfo(): Promise<NocCurrentUserInfoResultRaw> {
     return getCurrentUserInfo(this);
   }
 
-  async getRoster(options: NocRosterOptions): Promise<NocRosterResult> {
+  async getRoster(options: NocRosterOptions): Promise<NocRosterResultRaw> {
     return getRoster(this, options);
   }
 
-  async getCrewOnBoardDetails(activityId: number): Promise<NocCrewOnBoardDetailsResult> {
+  async getCrewOnBoardDetails(activityId: number): Promise<NocCrewOnBoardDetailsResultRaw> {
     return getCrewOnBoardDetails(this, activityId);
   }
 
   async getRosterMonthlyAccumulatedValues(
     options: NocRosterOptions,
-  ): Promise<NocRosterMonthlyAccumulatedValuesResult> {
+  ): Promise<NocRosterMonthlyAccumulatedValuesResultRaw> {
     return getRosterMonthlyAccumulatedValues(this, options);
   }
 
-  async getOpenTimeUserContext(): Promise<NocOpenTimeUserContextResult> {
+  async getOpenTimeUserContext(): Promise<NocOpenTimeUserContextResultRaw> {
     return getOpenTimeUserContext(this);
   }
 
-  async getOpenTimeRoster(options: NocOpenTimeBaseOptions): Promise<NocOpenTimeRosterResult> {
+  async getOpenTimeRoster(options: NocOpenTimeBaseOptions): Promise<NocOpenTimeRosterResultRaw> {
     return getOpenTimeRoster(this, options);
   }
 
   async getOpenTimeRosterLegalityValues(
     options: NocOpenTimeBaseOptions,
-  ): Promise<NocOpenTimeRosterLegalityValuesResult> {
+  ): Promise<NocOpenTimeRosterLegalityValuesResultRaw> {
     return getOpenTimeRosterLegalityValues(this, options);
   }
 
-  async getOpenTimePairings(options: NocOpenTimeBaseOptions): Promise<NocOpenTimePairingsResult> {
+  async getOpenTimePairings(
+    options: NocOpenTimeBaseOptions,
+  ): Promise<NocOpenTimePairingsResultRaw> {
     return getOpenTimePairings(this, options);
   }
 
   async getOpenTimePairingsLegalityValues(
     options: NocOpenTimeBaseOptions,
-  ): Promise<NocOpenTimePairingsLegalityValuesResult> {
+  ): Promise<NocOpenTimePairingsLegalityValuesResultRaw> {
     return getOpenTimePairingsLegalityValues(this, options);
   }
 
   async getOpenTimePairingsBlockDetails(
     pairingId: number,
-  ): Promise<NocOpenTimePairingsBlockDetailsResult> {
+  ): Promise<NocOpenTimePairingsBlockDetailsResultRaw> {
     return getOpenTimePairingsBlockDetails(this, pairingId);
   }
 
-  async getNetReserve(options: NocNetReserveOptions = {}): Promise<NocNetReserveResult> {
+  async getNetReserve(options: NocNetReserveOptions = {}): Promise<NocNetReserveResultRaw> {
     return getNetReserve(this, options);
   }
 
-  async getStationOps(options: NocStationOpsOptions): Promise<NocStationOpsResult> {
+  async getStationOps(options: NocStationOpsOptions): Promise<NocStationOpsResultRaw> {
     return getStationOps(this.#stationOpsPage, options);
   }
 
-  async getRevision(): Promise<NocRevisionResult> {
+  async getRevision(): Promise<NocRevisionResultRaw> {
     return this.#revisionPage.getRevision();
   }
 
-  async confirmRevision(): Promise<NocConfirmRevisionResult> {
+  async confirmRevision(): Promise<NocConfirmRevisionResultRaw> {
     return this.#revisionPage.confirmRevision();
   }
 

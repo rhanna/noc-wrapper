@@ -2,16 +2,15 @@ import { NocBrowserError, NocJsonError, NocRevisionAckRequiredError } from "./er
 import { REVISION_PATH } from "./lib/noc-url-utils.js";
 import type { NocBrowser } from "./noc-browser.js";
 import { hasRevisionAckRequiredHtml, parseRevisionAckDetails } from "./noc-revision-ack.js";
+import type { NocJsonObject, NocJsonValue } from "./types.js";
 
 const HUMAN_RESOURCE_ROSTER_PATH = "/Dialogues/HumanResources/HumanResourceRoster.aspx";
 const CREW_ON_BOARD_DETAILS_PATH = "/Dialogues/HumanResources/HumanResourceCrewOnBoardDetails.aspx";
 
-export interface NocRosterRawObject {
-  readonly [key: string]: unknown;
-}
+export type NocRosterRawObject = NocJsonObject;
 
-export type NocHumanResourcesResult = NocRosterRawObject;
-export type NocCurrentUserInfoResult = NocRosterRawObject;
+export type NocHumanResourcesResultRaw = NocRosterRawObject;
+export type NocCurrentUserInfoResultRaw = NocRosterRawObject;
 
 export interface NocRosterOptions {
   readonly month: number;
@@ -19,30 +18,32 @@ export interface NocRosterOptions {
   readonly hrId: number;
 }
 
-export type NocRosterResult = NocRosterRawObject;
-export type NocCrewOnBoardDetailsResult = NocRosterRawObject;
+export type NocRosterResultRaw = NocRosterRawObject;
+export type NocCrewOnBoardDetailsResultRaw = NocRosterRawObject;
 
-export interface NocRosterMonthlyAccumulatedValue {
-  readonly Label?: unknown;
-  readonly Value?: unknown;
-  readonly [key: string]: unknown;
+export interface NocRosterMonthlyAccumulatedValueRaw {
+  readonly Label?: NocJsonValue;
+  readonly Value?: NocJsonValue;
+  readonly [key: string]: NocJsonValue | undefined;
 }
 
-export interface NocRosterMonthlyAccumulatedValuesResult {
-  readonly AccumulatedValues?: readonly NocRosterMonthlyAccumulatedValue[];
-  readonly [key: string]: unknown;
+export interface NocRosterMonthlyAccumulatedValuesResultRaw {
+  readonly AccumulatedValues?: readonly NocRosterMonthlyAccumulatedValueRaw[];
+  readonly [key: string]: NocJsonValue | undefined;
 }
 
-export async function getHumanResources(browser: NocBrowser): Promise<NocHumanResourcesResult> {
-  return postRosterWebMethod<NocHumanResourcesResult>(
+export async function getHumanResources(browser: NocBrowser): Promise<NocHumanResourcesResultRaw> {
+  return postRosterWebMethod<NocHumanResourcesResultRaw>(
     browser,
     `${HUMAN_RESOURCE_ROSTER_PATH}/GetHumanResources`,
     {},
   );
 }
 
-export async function getCurrentUserInfo(browser: NocBrowser): Promise<NocCurrentUserInfoResult> {
-  return postRosterWebMethod<NocCurrentUserInfoResult>(
+export async function getCurrentUserInfo(
+  browser: NocBrowser,
+): Promise<NocCurrentUserInfoResultRaw> {
+  return postRosterWebMethod<NocCurrentUserInfoResultRaw>(
     browser,
     `${HUMAN_RESOURCE_ROSTER_PATH}/GetCurrentUserInfo`,
     {
@@ -54,23 +55,27 @@ export async function getCurrentUserInfo(browser: NocBrowser): Promise<NocCurren
 export async function getRoster(
   browser: NocBrowser,
   options: NocRosterOptions,
-): Promise<NocRosterResult> {
+): Promise<NocRosterResultRaw> {
   validateRosterOptions(options);
 
-  return postRosterWebMethod<NocRosterResult>(browser, `${HUMAN_RESOURCE_ROSTER_PATH}/GetRoster`, {
-    month: options.month,
-    year: options.year,
-    hrId: options.hrId,
-  });
+  return postRosterWebMethod<NocRosterResultRaw>(
+    browser,
+    `${HUMAN_RESOURCE_ROSTER_PATH}/GetRoster`,
+    {
+      month: options.month,
+      year: options.year,
+      hrId: options.hrId,
+    },
+  );
 }
 
 export async function getCrewOnBoardDetails(
   browser: NocBrowser,
   activityId: number,
-): Promise<NocCrewOnBoardDetailsResult> {
+): Promise<NocCrewOnBoardDetailsResultRaw> {
   validatePositiveInteger("activityId", activityId);
 
-  return postRosterWebMethod<NocCrewOnBoardDetailsResult>(
+  return postRosterWebMethod<NocCrewOnBoardDetailsResultRaw>(
     browser,
     `${CREW_ON_BOARD_DETAILS_PATH}/GetCrewOnBoardDetails`,
     {
@@ -82,10 +87,10 @@ export async function getCrewOnBoardDetails(
 export async function getRosterMonthlyAccumulatedValues(
   browser: NocBrowser,
   options: NocRosterOptions,
-): Promise<NocRosterMonthlyAccumulatedValuesResult> {
+): Promise<NocRosterMonthlyAccumulatedValuesResultRaw> {
   validateRosterOptions(options);
 
-  return postRosterWebMethod<NocRosterMonthlyAccumulatedValuesResult>(
+  return postRosterWebMethod<NocRosterMonthlyAccumulatedValuesResultRaw>(
     browser,
     `${HUMAN_RESOURCE_ROSTER_PATH}/GetMonthlyAccumulatedValues`,
     {
@@ -99,7 +104,7 @@ export async function getRosterMonthlyAccumulatedValues(
 async function postRosterWebMethod<T>(
   browser: NocBrowser,
   path: string,
-  payload: Record<string, unknown>,
+  payload: NocJsonObject,
 ): Promise<T> {
   try {
     const result = await browser.postWebMethod<T>(path, payload);
