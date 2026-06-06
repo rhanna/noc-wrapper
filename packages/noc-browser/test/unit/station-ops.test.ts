@@ -19,7 +19,7 @@ describe("Station Ops APIs", () => {
     expect(StationOpsTimeMode.Local).toBe(2);
   });
 
-  it("posts exact Station Ops fields and parses structured departures and arrivals", async () => {
+  it("posts exact Station Ops fields and parses panel-labeled rows", async () => {
     const calls: FetchCall[] = [];
     const browser = new NocBrowser({
       baseUrl: "https://poe.example.test/RaidoMobile",
@@ -48,64 +48,52 @@ describe("Station Ops APIs", () => {
     expect(postedFields.get("ctl00$MasterMain$TimeMode$DP_TimeModes")).toBe("1");
     expect(postedFields.get("ctl00$MasterMain$btnSearch")).toBe("Search");
 
-    expect(result.departuresLabel).toBe("Departures");
-    expect(result.arrivalsLabel).toBe("Arrivals");
-    expect(result.departures).toHaveLength(1);
-    expect(result.arrivals).toHaveLength(1);
-    expect(result.departures[0]?.header).toEqual({
-      flightNum: "P32459",
+    expect(Object.hasOwn(result, "departuresLabel")).toBe(false);
+    expect(Object.hasOwn(result, "arrivalsLabel")).toBe(false);
+    expect(Object.hasOwn(result, "departures")).toBe(false);
+    expect(Object.hasOwn(result, "arrivals")).toBe(false);
+    expect(result.Departures).toHaveLength(1);
+    expect(result.Arrivals).toHaveLength(1);
+    expect(result.Departures?.[0]?.header).toEqual({
+      Flight: "P32459",
       STD: "0645",
       ATD: "0649",
-      dest: "YUL",
-      registration: "C-GKQB",
-      gate: "10",
-      pax: "B 21",
-      color: "#2AA843",
-      raw: ["P32459", "0645", "0649", "YUL", "C-GKQB", "10", "", "B 21", "", ""],
+      Destination: "YUL",
+      Registration: "C-GKQB",
+      Gate: "10",
+      Pax: "B 21",
+      Color: "#2AA843",
     });
-    expect(result.departures[0]?.details).toEqual({
-      date: "28APR26",
-      departure: "YTZ - CYTZ - TORONTO ISLAND APT",
-      arrival: "YUL - CYUL - PIERRE ELLIOT TRUDEAU INTL",
+    expect(Object.hasOwn(result.Departures?.[0]?.header ?? {}, "raw")).toBe(false);
+    expect(result.Departures?.[0]?.details).toEqual({
+      Date: "28APR26",
+      Departure: "YTZ - CYTZ - TORONTO ISLAND APT",
+      Arrival: "YUL - CYUL - PIERRE ELLIOT TRUDEAU INTL",
       STD: "0645",
       STA: "0800",
-      registration: "C-GKQB",
-      version: "DH4XX",
-      type: "DH4",
-      depGate: "10",
-      arrGate: undefined,
-      crewOnBoard: "CA - 4488 Montesano, Joshua",
-      delay: "Late aircraft",
-      pax: "Bookings Weight 14/6/1/0",
-      notes: "Ops note",
-      raw: [
-        { label: "Date", value: "28APR26" },
-        { label: "Departure", value: "YTZ - CYTZ - TORONTO ISLAND APT" },
-        { label: "Arrival", value: "YUL - CYUL - PIERRE ELLIOT TRUDEAU INTL" },
-        { label: "STD", value: "0645" },
-        { label: "STA", value: "0800" },
-        { label: "Registration", value: "C-GKQB" },
-        { label: "Version", value: "DH4XX" },
-        { label: "Type", value: "DH4" },
-        { label: "Dep Gate", value: "10" },
-        { label: "Crew On Board", value: "CA - 4488 Montesano, Joshua" },
-        { label: "Delay", value: "Late aircraft" },
-        { label: "Pax", value: "Bookings Weight 14/6/1/0" },
-        { label: "Notes", value: "Ops note" },
-      ],
+      Registration: "C-GKQB",
+      Version: "DH4XX",
+      Type: "DH4",
+      "Dep Gate": "10",
+      "Crew On Board": "CA - 4488 Montesano, Joshua",
+      Delay: "Late aircraft",
+      Pax: "Bookings Weight 14/6/1/0",
+      Notes: "Ops note",
     });
-    expect(result.arrivals[0]?.header).toEqual({
-      flightNum: "P32682",
+    expect(Object.hasOwn(result.Departures?.[0]?.details ?? {}, "raw")).toBe(false);
+    expect(Object.hasOwn(result.Departures?.[0]?.details ?? {}, "depGate")).toBe(false);
+    expect(Object.hasOwn(result.Departures?.[0]?.details ?? {}, "crewOnBoard")).toBe(false);
+    expect(result.Arrivals?.[0]?.header).toEqual({
+      Flight: "P32682",
       STA: "0740",
       ATA: "0738",
-      origin: "YAM",
-      registration: "C-GKQA",
-      gate: "05",
-      pax: "B 23",
-      color: "#FF0000",
-      raw: ["P32682", "0740", "0738", "YAM", "C-GKQA", "05", "", "B 23", "", ""],
+      Origin: "YAM",
+      Registration: "C-GKQA",
+      Gate: "05",
+      Pax: "B 23",
+      Color: "#FF0000",
     });
-    expect(result.arrivals[0]?.details.arrGate).toBe("05");
+    expect(result.Arrivals?.[0]?.details["Arr Gate"]).toBe("05");
   });
 
   it("accepts supported date formats", async () => {

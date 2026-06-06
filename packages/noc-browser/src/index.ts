@@ -40,12 +40,6 @@ export type {
 } from "./noc-revision-page.js";
 export { StationOpsSort, StationOpsTimeMode } from "./noc-station-ops.js";
 export type {
-  NocStationOpsArrivalRaw,
-  NocStationOpsArrivalHeaderRaw,
-  NocStationOpsDepartureRaw,
-  NocStationOpsDepartureHeaderRaw,
-  NocStationOpsDetailRowRaw,
-  NocStationOpsDetailsRaw,
   NocStationOpsOptions,
   NocStationOpsResultRaw,
   StationOpsDateInput,

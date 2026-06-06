@@ -4,6 +4,7 @@ import { REVISION_PATH } from "./lib/noc-url-utils.js";
 import type { NocBrowser } from "./noc-browser.js";
 import { NocBrowserPage } from "./noc-browser-page.js";
 import { hasRevisionAckRequiredHtml, parseRevisionAckDetails } from "./noc-revision-ack.js";
+import type { NocJsonObject } from "./types.js";
 
 const STATION_OPS_PATH = "/Dialogues/Operations/StationOperations.aspx";
 const DATE_TEXT_FIELD = "ctl00$MasterMain$tbDate$DateFieldTextBox";
@@ -39,67 +40,14 @@ export interface NocStationOpsOptions {
 }
 
 export interface NocStationOpsResultRaw {
-  readonly departuresLabel?: string;
-  readonly arrivalsLabel?: string;
-  readonly departures: readonly NocStationOpsDepartureRaw[];
-  readonly arrivals: readonly NocStationOpsArrivalRaw[];
+  readonly [panelLabel: string]: readonly NocStationOpsRowRaw[];
 }
 
-export interface NocStationOpsDepartureRaw {
-  readonly header: NocStationOpsDepartureHeaderRaw;
-  readonly details: NocStationOpsDetailsRaw;
-}
+type NocStationOpsRawObject = Readonly<Record<string, string>> & NocJsonObject;
 
-export interface NocStationOpsArrivalRaw {
-  readonly header: NocStationOpsArrivalHeaderRaw;
-  readonly details: NocStationOpsDetailsRaw;
-}
-
-export interface NocStationOpsDepartureHeaderRaw {
-  readonly flightNum: string;
-  readonly STD: string;
-  readonly ATD: string;
-  readonly dest: string;
-  readonly registration: string;
-  readonly gate: string;
-  readonly pax: string;
-  readonly color: string;
-  readonly raw: readonly string[];
-}
-
-export interface NocStationOpsArrivalHeaderRaw {
-  readonly flightNum: string;
-  readonly STA: string;
-  readonly ATA: string;
-  readonly origin: string;
-  readonly registration: string;
-  readonly gate: string;
-  readonly pax: string;
-  readonly color: string;
-  readonly raw: readonly string[];
-}
-
-export interface NocStationOpsDetailsRaw {
-  readonly date?: string;
-  readonly departure?: string;
-  readonly arrival?: string;
-  readonly STD?: string;
-  readonly STA?: string;
-  readonly registration?: string;
-  readonly version?: string;
-  readonly type?: string;
-  readonly depGate?: string;
-  readonly arrGate?: string;
-  readonly crewOnBoard?: string;
-  readonly delay?: string;
-  readonly pax?: string;
-  readonly notes?: string;
-  readonly raw: readonly NocStationOpsDetailRowRaw[];
-}
-
-export interface NocStationOpsDetailRowRaw {
-  readonly label: string;
-  readonly value: string;
+interface NocStationOpsRowRaw extends NocJsonObject {
+  readonly header: NocStationOpsRawObject;
+  readonly details: NocStationOpsRawObject;
 }
 
 interface FormattedStationOpsDate {
@@ -162,13 +110,20 @@ export class NocStationOpsPage extends NocBrowserPage {
 
   private parseResults(): NocStationOpsResultRaw {
     const $ = load(this.html);
+    const result: Record<string, readonly NocStationOpsRowRaw[]> = {};
 
-    return {
-      departuresLabel: textOrUndefined($, "#MasterMain_lbUpper"),
-      arrivalsLabel: textOrUndefined($, "#MasterMain_lbLower"),
-      departures: parsePanel($, "#panelUpperWrapper", "departure"),
-      arrivals: parsePanel($, "#panelLowerWrapper", "arrival"),
-    };
+    result[textOrEmpty($, "#MasterMain_lbUpper")] = parsePanel(
+      $,
+      "#panelUpperWrapper",
+      DEPARTURE_HEADER_KEYS,
+    );
+    result[textOrEmpty($, "#MasterMain_lbLower")] = parsePanel(
+      $,
+      "#panelLowerWrapper",
+      ARRIVAL_HEADER_KEYS,
+    );
+
+    return result;
   }
 
   private throwIfRevisionAckRequired(): void {
@@ -235,90 +190,85 @@ function validateStationOpsOptions(options: NocStationOpsOptions): NormalizedSta
   };
 }
 
+const DEPARTURE_HEADER_KEYS = [
+  "Flight",
+  "STD",
+  "ATD",
+  "Destination",
+  "Registration",
+  "Gate",
+  undefined,
+  "Pax",
+  undefined,
+  undefined,
+] as const;
+
+const ARRIVAL_HEADER_KEYS = [
+  "Flight",
+  "STA",
+  "ATA",
+  "Origin",
+  "Registration",
+  "Gate",
+  undefined,
+  "Pax",
+  undefined,
+  undefined,
+] as const;
+
 function parsePanel(
   $: LoadedCheerio,
   selector: string,
-  type: "departure",
-): NocStationOpsDepartureRaw[];
-function parsePanel($: LoadedCheerio, selector: string, type: "arrival"): NocStationOpsArrivalRaw[];
-function parsePanel(
-  $: LoadedCheerio,
-  selector: string,
-  type: "departure" | "arrival",
-): Array<NocStationOpsDepartureRaw | NocStationOpsArrivalRaw> {
-  const rows = $(selector).find(".ListItem").toArray();
-
-  if (type === "departure") {
-    return rows.map((item) => parseDepartureRow($, item));
-  }
-
-  return rows.map((item) => parseArrivalRow($, item));
+  headerKeys: readonly (string | undefined)[],
+): NocStationOpsRowRaw[] {
+  return $(selector)
+    .find(".ListItem")
+    .toArray()
+    .map((item) => parseRow($, item, headerKeys));
 }
 
-function parseDepartureRow(
+function parseRow(
   $: LoadedCheerio,
   item: CheerioAcceptedElement,
-): NocStationOpsDepartureRaw {
-  const { rawHeader, color, details } = parseRowParts($, item);
-
-  return {
-    header: {
-      flightNum: rawHeader[0] ?? "",
-      STD: rawHeader[1] ?? "",
-      ATD: rawHeader[2] ?? "",
-      dest: rawHeader[3] ?? "",
-      registration: rawHeader[4] ?? "",
-      gate: rawHeader[5] ?? "",
-      pax: rawHeader[7] ?? "",
-      color,
-      raw: rawHeader,
-    },
-    details,
-  };
-}
-
-function parseArrivalRow($: LoadedCheerio, item: CheerioAcceptedElement): NocStationOpsArrivalRaw {
-  const { rawHeader, color, details } = parseRowParts($, item);
-
-  return {
-    header: {
-      flightNum: rawHeader[0] ?? "",
-      STA: rawHeader[1] ?? "",
-      ATA: rawHeader[2] ?? "",
-      origin: rawHeader[3] ?? "",
-      registration: rawHeader[4] ?? "",
-      gate: rawHeader[5] ?? "",
-      pax: rawHeader[7] ?? "",
-      color,
-      raw: rawHeader,
-    },
-    details,
-  };
-}
-
-function parseRowParts(
-  $: LoadedCheerio,
-  item: CheerioAcceptedElement,
-): {
-  readonly rawHeader: readonly string[];
-  readonly color: string;
-  readonly details: NocStationOpsDetailsRaw;
-} {
+  headerKeys: readonly (string | undefined)[],
+): NocStationOpsRowRaw {
   const $item = $(item);
   const $header = $item.find(".ItemHeader").first();
-  const rawHeader = $header
+  const headerValues = $header
     .find(".ActivityInfoRow td")
     .toArray()
     .map((cell) => normalizeText($(cell).text()));
-  const color = extractBackgroundColor($header.attr("style") ?? "");
-  const details = parseDetails($, $item.find(".ItemChildTableDetails").first());
 
-  return { rawHeader, color, details };
+  return {
+    header: parseHeader(
+      headerValues,
+      headerKeys,
+      extractBackgroundColor($header.attr("style") ?? ""),
+    ),
+    details: parseDetails($, $item.find(".ItemChildTableDetails").first()),
+  };
 }
 
-function parseDetails($: LoadedCheerio, detailsTable: CheerioSelection): NocStationOpsDetailsRaw {
-  const values: Record<string, string> = {};
-  const raw: NocStationOpsDetailRowRaw[] = [];
+function parseHeader(
+  values: readonly string[],
+  keys: readonly (string | undefined)[],
+  color: string,
+): NocStationOpsRawObject {
+  const header: Record<string, string> = {};
+
+  for (const [index, key] of keys.entries()) {
+    if (key !== undefined) {
+      header[key] = values[index] ?? "";
+    }
+  }
+
+  header.Color = color;
+
+  return header;
+}
+
+function parseDetails($: LoadedCheerio, detailsTable: CheerioSelection): NocStationOpsRawObject {
+  const details: Record<string, string> = {};
 
   detailsTable.find("tr").each((_, row) => {
     const cells = $(row).find("td");
@@ -334,27 +284,10 @@ function parseDetails($: LoadedCheerio, detailsTable: CheerioSelection): NocStat
       return;
     }
 
-    raw.push({ label, value });
-    values[label] = value;
+    details[label] = value;
   });
 
-  return {
-    date: values.Date,
-    departure: values.Departure,
-    arrival: values.Arrival,
-    STD: values.STD,
-    STA: values.STA,
-    registration: values.Registration,
-    version: values.Version,
-    type: values.Type,
-    depGate: values["Dep Gate"],
-    arrGate: values["Arr Gate"],
-    crewOnBoard: values["Crew On Board"],
-    delay: values.Delay,
-    pax: values.Pax,
-    notes: values.Notes,
-    raw,
-  };
+  return details;
 }
 
 function formatStationOpsDate(value: StationOpsDateInput): FormattedStationOpsDate {
@@ -476,9 +409,8 @@ function elementText($: LoadedCheerio, element: CheerioAcceptedElement | undefin
   return normalizeText($element.text());
 }
 
-function textOrUndefined($: LoadedCheerio, selector: string): string | undefined {
-  const text = normalizeText($(selector).first().text());
-  return text || undefined;
+function textOrEmpty($: LoadedCheerio, selector: string): string {
+  return normalizeText($(selector).first().text());
 }
 
 function isPositiveInteger(value: unknown): value is number {

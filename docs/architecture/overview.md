@@ -125,12 +125,12 @@ required inputs and return raw NOC JSON payloads unchanged.
 - posts `stationId` directly or resolves `stationCode` from the page dropdown only when explicitly provided
 - rejects calls that provide both `stationId` and `stationCode`
 
-Station Ops returns `NocStationOpsResultRaw` with departures and arrivals separately. Rows keep NOC values as strings but
-expose known NOC header and detail fields as structured raw JSON objects. Departure headers expose `flightNum`, `STD`,
-`ATD`, `dest`, `registration`, `gate`, `pax`, `color`, and `raw`; arrival headers expose `flightNum`, `STA`, `ATA`,
-`origin`, `registration`, `gate`, `pax`, `color`, and `raw`. Details expose NOC label-derived fields such as `date`,
-`departure`, `arrival`, `STD`, `STA`, `registration`, `version`, `type`, `depGate`, `arrGate`, `crewOnBoard`, `delay`,
-`pax`, `notes`, and `raw`. The browser does not interpret header colors or normalize row values.
+Station Ops returns `NocStationOpsResultRaw` as raw panel JSON keyed by the visible panel labels, such as `Departures`
+and `Arrivals`. Each panel contains row objects with `header` and `details` maps. Header keys use the NOC table positions
+because the page does not provide visible header labels: departures expose `Flight`, `STD`, `ATD`, `Destination`,
+`Registration`, `Gate`, `Pax`, and `Color`; arrivals expose `Flight`, `STA`, `ATA`, `Origin`, `Registration`, `Gate`,
+`Pax`, and `Color`. Details preserve exact NOC label text such as `Date`, `Dep Gate`, and `Crew On Board` as object keys.
+The browser does not emit semantic aliases or `raw` arrays, and does not interpret header colors or normalize row values.
 
 ## Package Boundaries
 

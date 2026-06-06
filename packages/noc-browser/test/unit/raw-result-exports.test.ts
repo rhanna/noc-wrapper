@@ -29,8 +29,8 @@ describe("raw browser result exports", () => {
     } satisfies NocRevisionResultRaw;
 
     const stationOps = {
-      departures: [],
-      arrivals: [],
+      Departures: [],
+      Arrivals: [],
     } satisfies NocStationOpsResultRaw;
 
     const rawJson = {
