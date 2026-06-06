@@ -11,9 +11,13 @@ import { isDefaultPageUrl, isRevisionRequiredPage, LOGIN_PATH } from "./lib/noc-
 import { firstText } from "./lib/noc-parse-utils.js";
 
 export interface NocAuthenticationResultRaw {
+  /** Always `true` when authentication succeeds. */
   readonly authenticated: true;
+  /** Final NOC URL after the login POST completes. */
   readonly currentUrl: string;
+  /** Whether login succeeded but active revision acknowledgement is required. */
   readonly revisionAckRequired: boolean;
+  /** Raw revision acknowledgement details when acknowledgement is required. */
   readonly revisionAckDetails?: NocRevisionAckDetailsRaw;
 }
 

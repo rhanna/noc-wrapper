@@ -7,28 +7,62 @@ import type { NocJsonObject, NocJsonValue } from "./types.js";
 const HUMAN_RESOURCE_ROSTER_PATH = "/Dialogues/HumanResources/HumanResourceRoster.aspx";
 const CREW_ON_BOARD_DETAILS_PATH = "/Dialogues/HumanResources/HumanResourceCrewOnBoardDetails.aspx";
 
+/**
+ * Raw JSON-compatible object returned by NOC Roster WebMethods after `.d` unwrapping.
+ */
 export type NocRosterRawObject = NocJsonObject;
 
+/**
+ * Raw human resources payload returned unchanged from NOC.
+ */
 export type NocHumanResourcesResultRaw = NocRosterRawObject;
+
+/**
+ * Raw current-user payload returned unchanged from NOC.
+ */
 export type NocCurrentUserInfoResultRaw = NocRosterRawObject;
 
+/**
+ * Required identifiers for NOC roster and monthly accumulated value WebMethods.
+ */
 export interface NocRosterOptions {
+  /** One-based month number from 1 to 12. */
   readonly month: number;
+  /** Full positive year number. */
   readonly year: number;
+  /** NOC human resource identifier. */
   readonly hrId: number;
 }
 
+/**
+ * Raw roster payload returned unchanged from NOC.
+ */
 export type NocRosterResultRaw = NocRosterRawObject;
+
+/**
+ * Raw crew-on-board details payload returned unchanged from NOC.
+ */
 export type NocCrewOnBoardDetailsResultRaw = NocRosterRawObject;
 
+/**
+ * Raw monthly accumulated value item returned by NOC.
+ */
 export interface NocRosterMonthlyAccumulatedValueRaw {
+  /** NOC label value when present. */
   readonly Label?: NocJsonValue;
+  /** NOC accumulated value when present. */
   readonly Value?: NocJsonValue;
+  /** Additional NOC fields returned without normalization. */
   readonly [key: string]: NocJsonValue | undefined;
 }
 
+/**
+ * Raw monthly accumulated values payload returned by NOC.
+ */
 export interface NocRosterMonthlyAccumulatedValuesResultRaw {
+  /** NOC accumulated values array when present. */
   readonly AccumulatedValues?: readonly NocRosterMonthlyAccumulatedValueRaw[];
+  /** Additional NOC fields returned without normalization. */
   readonly [key: string]: NocJsonValue | undefined;
 }
 

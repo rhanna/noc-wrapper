@@ -15,25 +15,48 @@ import type { NocJsonObject } from "./types.js";
 
 const CONFIRM_REVISION_FIELD = "ctl00$MasterMain$btnConfirm";
 
+/**
+ * Raw My Revision activity row keyed by the NOC table header text.
+ */
 export type NocRevisionActivityRaw = NocJsonObject;
 
+/**
+ * Raw My Revision day parsed from one `.ListItem` section.
+ */
 export interface NocRevisionDayRaw {
+  /** NOC day header text. */
   readonly date: string;
+  /** Day-level NOC notes text. */
   readonly notes: readonly string[];
+  /** Dynamic section arrays keyed by exact NOC section header text. */
   readonly [sectionHeader: string]: string | readonly string[] | readonly NocRevisionActivityRaw[];
 }
 
+/**
+ * Raw My Revision page result.
+ */
 export interface NocRevisionResultRaw {
+  /** Final NOC URL for the My Revision page. */
   readonly currentUrl: string;
+  /** Whether an enabled revision confirm control is present. */
   readonly revisionAckRequired: boolean;
+  /** Raw acknowledgement details when acknowledgement is required. */
   readonly revisionAckDetails?: NocRevisionAckDetailsRaw;
+  /** Parsed raw revision days, preserving NOC section names and field text. */
   readonly days: readonly NocRevisionDayRaw[];
 }
 
+/**
+ * Raw result returned after attempting to confirm My Revision.
+ */
 export interface NocConfirmRevisionResultRaw {
+  /** Final NOC URL after the confirm attempt. */
   readonly currentUrl: string;
+  /** Whether the confirm POST cleared the acknowledgement requirement. */
   readonly confirmed: boolean;
+  /** Whether acknowledgement is still required after the call. */
   readonly revisionAckRequired: boolean;
+  /** Raw acknowledgement details when acknowledgement remains required. */
   readonly revisionAckDetails?: NocRevisionAckDetailsRaw;
 }
 

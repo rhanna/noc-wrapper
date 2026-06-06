@@ -4,9 +4,13 @@ import { firstText } from "./lib/noc-parse-utils.js";
 const CONFIRM_BUTTON_SELECTOR = '#MasterMain_btnConfirm, input[name="ctl00$MasterMain$btnConfirm"]';
 
 export interface NocRevisionAckDetailsRaw {
+  /** NOC URL where the acknowledgement details were observed. */
   readonly currentUrl: string;
+  /** Parsed page title text when present. */
   readonly title?: string;
+  /** Parsed acknowledgement message text when present. */
   readonly message?: string;
+  /** Whether an enabled confirm control is present. */
   readonly confirmButtonPresent: boolean;
 }
 

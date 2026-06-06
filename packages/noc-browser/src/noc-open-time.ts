@@ -6,22 +6,60 @@ import type { NocJsonObject } from "./types.js";
 
 const OPEN_TIME_API_PATH = "/api/open-time";
 
+/**
+ * Raw JSON-compatible object returned by NOC Open Time APIs.
+ */
 export type NocOpenTimeRawObject = NocJsonObject;
 
+/**
+ * Required base identifier for Open Time roster, pairing, and legality calls.
+ */
 export interface NocOpenTimeBaseOptions {
+  /** NOC base identifier. */
   readonly baseId: number;
 }
 
+/**
+ * Options for the Net Reserve API.
+ */
 export interface NocNetReserveOptions {
+  /** Whether to request SAP net reserve values. Defaults to `false`. */
   readonly isSap?: boolean;
 }
 
+/**
+ * Raw Open Time user context payload returned unchanged from NOC.
+ */
 export type NocOpenTimeUserContextResultRaw = NocOpenTimeRawObject;
+
+/**
+ * Raw Open Time roster payload returned unchanged from NOC.
+ */
 export type NocOpenTimeRosterResultRaw = NocOpenTimeRawObject;
+
+/**
+ * Raw Open Time roster legality payload returned unchanged from NOC.
+ */
 export type NocOpenTimeRosterLegalityValuesResultRaw = NocOpenTimeRawObject;
+
+/**
+ * Raw Open Time pairings payload returned unchanged from NOC.
+ */
 export type NocOpenTimePairingsResultRaw = NocOpenTimeRawObject;
+
+/**
+ * Raw Open Time pairings legality payload returned unchanged from NOC.
+ */
 export type NocOpenTimePairingsLegalityValuesResultRaw = NocOpenTimeRawObject;
+
+/**
+ * Raw Open Time pairing block-details payload returned unchanged from NOC.
+ */
 export type NocOpenTimePairingsBlockDetailsResultRaw = NocOpenTimeRawObject;
+
+/**
+ * Raw Net Reserve payload returned unchanged from NOC.
+ */
 export type NocNetReserveResultRaw = NocOpenTimeRawObject;
 
 export async function getOpenTimeUserContext(

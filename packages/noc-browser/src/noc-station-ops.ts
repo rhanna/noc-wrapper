@@ -18,35 +18,67 @@ type LoadedCheerio = ReturnType<typeof load>;
 type CheerioAcceptedElement = Parameters<LoadedCheerio>[0];
 type CheerioSelection = ReturnType<LoadedCheerio>;
 
+/**
+ * Sort order values accepted by the NOC Station Operations page.
+ */
 export enum StationOpsSort {
+  /** Sort results by time. */
   Time = 0,
+  /** Sort results by station. */
   Station = 1,
 }
 
+/**
+ * Time display mode values accepted by the NOC Station Operations page.
+ */
 export enum StationOpsTimeMode {
+  /** Request UTC times. */
   UTC = 1,
+  /** Request local station times. */
   Local = 2,
 }
 
+/**
+ * Date input accepted by Station Operations.
+ *
+ * Strings may be `YYYY-MM-DD`, `YYYYMMDD`, or NOC `DDMMMYY` format.
+ */
 export type StationOpsDateInput = Date | string;
 
+/**
+ * Options for posting a Station Operations search.
+ */
 export interface NocStationOpsOptions {
+  /** Search date as `Date`, `YYYY-MM-DD`, `YYYYMMDD`, or `DDMMMYY`. */
   readonly date: StationOpsDateInput;
+  /** NOC station identifier. Mutually exclusive with `stationCode`. */
   readonly stationId?: number;
+  /** Visible station code to resolve from the loaded NOC page. Mutually exclusive with `stationId`. */
   readonly stationCode?: string;
+  /** NOC sort mode. Defaults to `StationOpsSort.Time`. */
   readonly sort?: StationOpsSort;
+  /** NOC time mode. Defaults to `StationOpsTimeMode.Local`. */
   readonly timeMode?: StationOpsTimeMode;
+  /** Whether to refresh the Station Operations page before posting. Defaults to `false`. */
   readonly refreshPage?: boolean;
 }
 
+/**
+ * Raw Station Operations panels keyed by visible NOC panel label.
+ */
 export interface NocStationOpsResultRaw {
   readonly [panelLabel: string]: readonly NocStationOpsRowRaw[];
 }
 
 type NocStationOpsRawObject = Readonly<Record<string, string>> & NocJsonObject;
 
+/**
+ * Raw Station Operations row with parsed header and detail fields.
+ */
 interface NocStationOpsRowRaw extends NocJsonObject {
+  /** Header fields parsed from the NOC row summary. */
   readonly header: NocStationOpsRawObject;
+  /** Detail fields keyed by exact NOC label text. */
   readonly details: NocStationOpsRawObject;
 }
 
