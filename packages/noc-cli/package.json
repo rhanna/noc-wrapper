@@ -17,6 +17,6 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@scope/noc-client": "0.0.0"
+    "@rhanna/noc-browser": "0.0.0"
   }
 }
