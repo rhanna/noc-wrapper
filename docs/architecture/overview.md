@@ -37,9 +37,9 @@ page-local form action, or otherwise depending on page-local HTML state must liv
 classes extend `NocBrowserPage` and keep their state on the page instance through `path`, `currentUrl`, `formAction`,
 `fields`, `html`, and `loaded`.
 
-Examples of this pattern are `NocLoginPage` and `NocRevisionPage`. Future HTML-backed flows, such as `StationOpsPage`,
-must follow the same model: `NocBrowser` owns one page instance and exposes thin delegating methods when a browser-level
-method is useful.
+Examples of this pattern are `NocLoginPage`, `NocRevisionPage`, and `NocStationOpsPage`. HTML-backed flows follow the
+same model: `NocBrowser` owns one page instance and exposes thin delegating methods when a browser-level method is
+useful.
 
 Direct NOC JSON calls do not need page instances when they do not depend on loaded HTML page state. WebMethods and JSON
 APIs such as `GetRoster`, `GetCurrentUserInfo`, and `GetMonthlyAccumulatedValues` should remain direct browser/client
@@ -104,8 +104,25 @@ Open Time roster, legality, pairing, and block-detail calls are intentionally se
 fetches legality values or block details as hidden convenience behavior from roster or pairing calls. These APIs validate
 required inputs and return raw NOC JSON payloads unchanged.
 
+`NocBrowser` implements page-backed Station Operations through `getStationOps(...)`:
+
+- uses `/Dialogues/Operations/StationOperations.aspx`
+- caches the Station Ops page object and current ASP.NET form state
+- `refreshPage: false` reuses cached form state; `refreshPage: true` performs a fresh GET before posting
+- posts the exact NOC date, station, sort, time-mode, and search fields
+- accepts `Date`, `YYYY-MM-DD`, `YYYYMMDD`, or `DDMMMYY` dates
+- posts `stationId` directly or resolves `stationCode` from the page dropdown only when explicitly provided
+- rejects calls that provide both `stationId` and `stationCode`
+
+Station Ops returns departures and arrivals separately. Rows keep NOC values as strings but expose known NOC header and
+detail fields as structured objects. Departure headers expose `flightNum`, `STD`, `ATD`, `dest`, `registration`, `gate`,
+`pax`, `color`, and `raw`; arrival headers expose `flightNum`, `STA`, `ATA`, `origin`, `registration`, `gate`, `pax`,
+`color`, and `raw`. Details expose NOC label-derived fields such as `date`, `departure`, `arrival`, `STD`, `STA`,
+`registration`, `version`, `type`, `depGate`, `arrGate`, `crewOnBoard`, `delay`, `pax`, `notes`, and `raw`. The browser
+does not interpret header colors or normalize row values.
+
 ## Package Boundaries
 
 `@rhanna/noc-browser` currently implements reusable browser primitives plus low-level authentication, My Revision, and
-Roster/Open Time APIs. Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred to later
-phases.
+Roster/Open Time/Station Ops APIs. Domain APIs, normalization, formatting, and CLI behavior are intentionally deferred
+to later phases.

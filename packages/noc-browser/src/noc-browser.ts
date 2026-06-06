@@ -36,6 +36,12 @@ import {
   type NocConfirmRevisionResult,
   type NocRevisionResult,
 } from "./noc-revision-page.js";
+import {
+  getStationOps,
+  NocStationOpsPage,
+  type NocStationOpsOptions,
+  type NocStationOpsResult,
+} from "./noc-station-ops.js";
 import type { BrowserOptions } from "./types.js";
 
 /**
@@ -62,11 +68,13 @@ import type { BrowserOptions } from "./types.js";
 export class NocBrowser extends AbstractBrowser {
   readonly #loginPage: NocLoginPage;
   readonly #revisionPage: NocRevisionPage;
+  readonly #stationOpsPage: NocStationOpsPage;
 
   constructor(options: BrowserOptions) {
     super(options);
     this.#loginPage = new NocLoginPage(this);
     this.#revisionPage = new NocRevisionPage(this);
+    this.#stationOpsPage = new NocStationOpsPage(this);
   }
 
   async authenticate(username: string, password: string): Promise<NocAuthenticationResult> {
@@ -127,6 +135,10 @@ export class NocBrowser extends AbstractBrowser {
 
   async getNetReserve(options: NocNetReserveOptions = {}): Promise<NocNetReserveResult> {
     return getNetReserve(this, options);
+  }
+
+  async getStationOps(options: NocStationOpsOptions): Promise<NocStationOpsResult> {
+    return getStationOps(this.#stationOpsPage, options);
   }
 
   async getRevision(): Promise<NocRevisionResult> {

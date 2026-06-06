@@ -7,6 +7,22 @@
 - [ ] Future improvement
 
 ## Done
+- [x] Phase 6: `noc-browser` Station Operations
+  - Context: Implemented page-backed Station Operations with cached form state,
+    exact NOC form posts, date formatting, station ID/code selection, structured
+    departure/arrival header and detail fields, header color preservation, and
+    revision-ack handling.
+  - Files: `packages/noc-browser/src/noc-station-ops.ts`,
+    `packages/noc-browser/src/noc-browser.ts`,
+    `packages/noc-browser/src/index.ts`,
+    `packages/noc-browser/test/unit/station-ops.test.ts`,
+    `packages/noc-browser/test/integration/station-ops.test.ts`,
+    `docs/architecture/overview.md`.
+  - Verification: focused Station Ops unit test passed with 8 tests; focused
+    Station Ops live integration test passed using cached and refreshed page
+    state; `npm run format` passed; `npm run test:unit` passed with 51 unit
+    tests; `npm run test:integration` passed with 7 live integration tests;
+    `npm run build` passed. Live tests did not confirm revision acknowledgement.
 - [x] Phase 5: `noc-browser` Open Time APIs
   - Context: Implemented low-level Open Time JSON API calls with explicit methods
     for roster legality values, pairing legality values, and pairing block

@@ -39,6 +39,18 @@ export type {
   NocRevisionDay,
   NocRevisionSection,
 } from "./noc-revision-page.js";
+export { StationOpsSort, StationOpsTimeMode } from "./noc-station-ops.js";
+export type {
+  NocStationOpsArrival,
+  NocStationOpsArrivalHeader,
+  NocStationOpsDeparture,
+  NocStationOpsDepartureHeader,
+  NocStationOpsDetailRow,
+  NocStationOpsDetails,
+  NocStationOpsOptions,
+  NocStationOpsResult,
+  StationOpsDateInput,
+} from "./noc-station-ops.js";
 export type { BrowserOptions as NocBrowserOptions } from "./types.js";
 
 export default NocBrowser;
