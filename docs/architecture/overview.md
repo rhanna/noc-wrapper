@@ -3,8 +3,8 @@
 This repository is an npm workspace with three packages:
 
 - `@rhanna/noc-browser`: implemented low-level browser/client package for direct NOC portal interactions.
-- `@scope/noc-client`: placeholder package reserved for higher-order normalized convenience APIs.
-- `@scope/noc-cli`: placeholder package reserved for the command-line app.
+- `@scope/noc-client`: planned higher-order wrapper for normalized convenience APIs.
+- `@scope/noc-cli`: command-line app with raw `noc-browser` and planned interpreted `noc-client` executables.
 
 ## `@rhanna/noc-browser`
 
@@ -137,3 +137,34 @@ The browser does not emit semantic aliases or `raw` arrays, and does not interpr
 `@rhanna/noc-browser` currently implements reusable browser primitives plus low-level authentication, My Revision, and
 Roster/Open Time/Station Ops APIs. Browser APIs expose `ResultRaw` output contracts only. Domain APIs, normalization,
 formatting, interpreted `Result` types, and CLI behavior are intentionally deferred to later phases.
+
+## Planned `@scope/noc-client`
+
+`@scope/noc-client` is the planned interpreted wrapper over `@rhanna/noc-browser`. It owns semantic result types,
+normalization, convenience lookup, composed calls, and caller-friendly workflows. Public client result contracts use
+unsuffixed `Result` names. The client must not change the browser package's raw APIs or `ResultRaw` contract.
+
+Phase 7 work is split into model-review-gated sub-phases. For each sub-phase, the proposed public data model must be
+reviewed before implementation starts. Each completed implementation phase should produce its own commit using the
+planned commit message in `.agents/tasks.md`.
+
+Client boundary rules:
+
+- Use "crew" naming in `noc-client`, not "human resources".
+- Do not expose `hrId` in public `NocClient` APIs or results.
+- Roster client APIs target either current user or employee number.
+- Keep the existing `noc-browser` CLI employee-number roster convenience as an explicit exception.
+- Duplicate employee-number parsing in `noc-client`; do not move the raw CLI parsing helper into the client.
+- Keep revision confirmation manual and explicit.
+- Keep `noc-browser` low-level behavior raw and unchanged.
+
+Planned sub-phases:
+
+- Phase 7.1 establishes `NocClient`, construction/session options, auth result types, revision acknowledgement details, and
+  `packages/noc-client` unit test wiring.
+- Phase 7.2 adds crew identity models and lookup by employee number while hiding private browser `hrId` use.
+- Phase 7.3 adds roster and monthly value convenience APIs using only current-user or employee-number targets.
+- Phase 7.4 adds Open Time convenience APIs that compose optional legality and block-detail browser calls.
+- Phase 7.5 adds Revision client models by converting dynamic raw sections into ordered section arrays.
+- Phase 7.6 adds Station Ops client models with stable departure and arrival arrays plus a panel fallback.
+- Phase 7.7 wires `noc-client` CLI commands after the accepted library APIs exist.

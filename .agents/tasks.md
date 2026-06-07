@@ -4,6 +4,375 @@
 - None
 
 ## Backlog
+- [ ] Phase 7.1: `noc-client` foundation
+  - Status: planned, model review required before implementation.
+  - Context: Replace the placeholder `@scope/noc-client` export with the
+    foundation for a higher-order client wrapper over `@rhanna/noc-browser`.
+    This phase must not add domain-specific roster, crew, Open Time, Revision,
+    or Station Ops behavior yet.
+  - Proposed model:
+    ```ts
+    export interface NocClientOptions {
+      readonly browser?: NocBrowser;
+      readonly browserOptions?: NocBrowserOptions;
+    }
+
+    export interface NocClientAuthResult {
+      readonly authenticated: true;
+      readonly revisionAckRequired: boolean;
+      readonly revisionAckDetails?: NocRevisionAckDetails;
+    }
+
+    export interface NocRevisionAckDetails {
+      readonly currentUrl: string;
+      readonly title?: string;
+      readonly message?: string;
+      readonly confirmButtonPresent: boolean;
+    }
+    ```
+  - Expected behavior: export `NocClient` and default `NocClient`; accept either
+    an injected `NocBrowser` or browser construction options, but not both;
+    delegate authentication and revision-ack status without exposing browser raw
+    result names; add unit-test wiring for `packages/noc-client`.
+  - Verification: `npm run format`, `npm run build`, and relevant
+    `packages/noc-client` unit tests.
+  - Commit message:
+    ```text
+    Add noc-client foundation
+    ```
+- [ ] Phase 7.2: `noc-client` Crew identity
+  - Status: planned, model review required before implementation.
+  - Context: In `noc-client`, use "crew" naming instead of "human resources".
+    Public `NocClient` APIs and results must not expose `hrId`. Internally,
+    private records may retain `hrId` only to perform browser calls. Duplicate
+    employee-number parsing in `noc-client`; do not move the existing
+    convenience behavior out of `packages/noc-cli/src/noc-browser.ts`.
+  - Proposed model:
+    ```ts
+    export interface NocCrewMember {
+      readonly employeeNumber?: string;
+      readonly displayName: string;
+      readonly firstName?: string;
+      readonly lastName?: string;
+      readonly status?: string;
+    }
+
+    export interface NocCurrentCrewMemberResult {
+      readonly crewMember: NocCrewMember;
+    }
+
+    export interface NocCrewListResult {
+      readonly crew: readonly NocCrewMember[];
+    }
+
+    export interface NocCrewLookupOptions {
+      readonly employeeNumber: string;
+    }
+
+    export interface NocCrewLookupResult {
+      readonly crewMember: NocCrewMember;
+    }
+    ```
+  - Expected behavior: add `getCrew()`, `getCurrentCrewMember()`, and
+    `getCrewMemberByEmployeeNumber()`; support employee-number candidates from
+    `EmpNo`, `EmployeeNum`, `EmployeeNumber`, and leading digits in
+    `DisplayName`; handle no match, duplicate match, invalid employee number,
+    and missing valid private `Id`.
+  - Verification: `npm run format`, `npm run build`, and crew unit tests using
+    sample/integration-contract shaped payloads.
+  - Commit message:
+    ```text
+    Add crew identity APIs to noc-client
+    ```
+- [ ] Phase 7.3: `noc-client` Roster convenience APIs
+  - Status: planned, model review required before implementation.
+  - Context: Expose roster APIs only by employee number or current user. Do not
+    expose public `hrId` inputs or outputs. Use `samples/sample.getRoster.json`
+    and `samples/sample.getRosterMonthlyAccumulatedValues.json` for model
+    review and mapping tests.
+  - Proposed model:
+    ```ts
+    export type NocRosterTarget =
+      | { readonly currentUser: true }
+      | { readonly employeeNumber: string };
+
+    export interface NocRosterOptions {
+      readonly month: number;
+      readonly year: number;
+      readonly target: NocRosterTarget;
+    }
+
+    export interface NocRosterResult {
+      readonly username?: string;
+      readonly date: string;
+      readonly target: NocRosterResolvedTarget;
+      readonly days: readonly NocRosterDay[];
+      readonly notes: readonly unknown[];
+    }
+
+    export interface NocRosterResolvedTarget {
+      readonly kind: "currentUser" | "employeeNumber";
+      readonly employeeNumber?: string;
+      readonly crewMember?: NocCrewMember;
+    }
+
+    export interface NocRosterDay {
+      readonly date: string;
+      readonly dayNumber: number;
+      readonly color?: string;
+      readonly isCurrentDay: boolean;
+      readonly departure?: NocRosterDayInfo;
+      readonly arrival?: NocRosterDayInfo;
+      readonly hotel?: NocRosterDayInfo;
+      readonly activities: readonly NocRosterActivity[];
+      readonly notes: readonly unknown[];
+    }
+
+    export interface NocRosterDayInfo {
+      readonly info?: string;
+      readonly details?: string;
+      readonly color?: string;
+    }
+
+    export interface NocRosterActivity {
+      readonly id: number;
+      readonly activity: string;
+      readonly checkIn?: string;
+      readonly std?: string;
+      readonly atd?: string;
+      readonly dep?: string;
+      readonly arr?: string;
+      readonly sta?: string;
+      readonly ata?: string;
+      readonly checkOut?: string;
+      readonly info?: string;
+      readonly state?: string;
+      readonly validFrom?: string;
+      readonly validFromUtc?: string;
+      readonly validTo?: string;
+      readonly validToUtc?: string;
+      readonly details: readonly NocRosterActivityDetail[];
+    }
+
+    export interface NocRosterActivityDetail {
+      readonly id?: string;
+      readonly label: string;
+      readonly value: unknown;
+      readonly color?: string;
+      readonly values: readonly unknown[];
+    }
+
+    export interface NocRosterMonthlyValuesResult {
+      readonly target: NocRosterResolvedTarget;
+      readonly values: readonly NocRosterMonthlyValue[];
+    }
+
+    export interface NocRosterMonthlyValue {
+      readonly label: string;
+      readonly value: string;
+    }
+    ```
+  - Expected behavior: `getRoster()` and `getRosterMonthlyValues()` resolve
+    current user or employee number internally, then call `NocBrowser` with a
+    private `hrId`; keep the existing `noc-browser` CLI `--employee-num`
+    convenience intact.
+  - Verification: `npm run format`, `npm run build`, and roster mapping/unit
+    tests from existing samples.
+  - Commit message:
+    ```text
+    Add roster convenience APIs to noc-client
+    ```
+- [ ] Phase 7.4: `noc-client` Open Time convenience APIs
+  - Status: planned, model review required before implementation.
+  - Context: Compose explicit browser Open Time calls at the client layer.
+    Browser methods remain raw and separate. Use existing Open Time integration
+    contract knowledge for model review until dedicated samples are added.
+  - Proposed model:
+    ```ts
+    export interface NocOpenTimeBase {
+      readonly id: number;
+      readonly name: string;
+      readonly default?: boolean;
+    }
+
+    export interface NocOpenTimeUserContextResult {
+      readonly isSapOpen: boolean;
+      readonly isFirstComeFirstServed: boolean;
+      readonly bases: readonly NocOpenTimeBase[];
+      readonly defaultBase?: NocOpenTimeBase;
+    }
+
+    export interface NocOpenTimeBaseOptions {
+      readonly baseId?: number;
+      readonly baseName?: string;
+      readonly useDefaultBase?: boolean;
+    }
+
+    export interface NocOpenTimeRosterOptions extends NocOpenTimeBaseOptions {
+      readonly includeLegalityValues?: boolean;
+    }
+
+    export interface NocOpenTimePairingsOptions extends NocOpenTimeBaseOptions {
+      readonly includeLegalityValues?: boolean;
+      readonly includeBlockDetails?: boolean;
+    }
+
+    export interface NocOpenTimeActivity {
+      readonly id: number;
+      readonly activityCode: string;
+      readonly date?: string;
+      readonly isPairing: boolean;
+      readonly rosterRank?: string;
+      readonly legalityValues?: readonly NocOpenTimeLegalityValue[];
+    }
+
+    export interface NocOpenTimePairing extends NocOpenTimeActivity {
+      readonly blockDetails?: readonly NocOpenTimeBlockDetail[];
+    }
+
+    export interface NocOpenTimeLegalityValue {
+      readonly key: string;
+      readonly value: string;
+    }
+
+    export interface NocOpenTimeBlockDetail {
+      readonly activityId: number;
+      readonly assignedPairingId: number;
+      readonly activityCode: string;
+      readonly dep: string;
+      readonly arr: string;
+    }
+    ```
+  - Expected behavior: resolve default base from user context only when client
+    options request it; optional legality and block details are client-level
+    composed calls; do not add hidden fetching to `noc-browser`.
+  - Verification: `npm run format`, `npm run build`, and Open Time unit tests
+    using integration-contract shaped fixtures.
+  - Commit message:
+    ```text
+    Add Open Time convenience APIs to noc-client
+    ```
+- [ ] Phase 7.5: `noc-client` Revision model APIs
+  - Status: planned, model review required before implementation.
+  - Context: Interpret raw My Revision dynamic day properties into stable client
+    sections. Confirmation remains explicit and non-automatic.
+  - Proposed model:
+    ```ts
+    export interface NocRevisionResult {
+      readonly revisionAckRequired: boolean;
+      readonly revisionAckDetails?: NocRevisionAckDetails;
+      readonly days: readonly NocRevisionDay[];
+    }
+
+    export interface NocRevisionDay {
+      readonly date: string;
+      readonly notes: readonly string[];
+      readonly sections: readonly NocRevisionSection[];
+    }
+
+    export interface NocRevisionSection {
+      readonly name: string;
+      readonly activities: readonly NocRevisionActivity[];
+    }
+
+    export interface NocRevisionActivity {
+      readonly fields: Readonly<Record<string, string>>;
+    }
+
+    export interface NocConfirmRevisionResult {
+      readonly confirmed: boolean;
+      readonly revisionAckRequired: boolean;
+      readonly revisionAckDetails?: NocRevisionAckDetails;
+    }
+    ```
+  - Expected behavior: preserve exact NOC section names in `section.name`; do
+    not force semantic names like current/new unless those strings appear in NOC
+    text; keep revision confirmation manual and explicit.
+  - Verification: `npm run format`, `npm run build`, and revision mapping/unit
+    tests from existing browser test fixtures.
+  - Commit message:
+    ```text
+    Add revision model APIs to noc-client
+    ```
+- [ ] Phase 7.6: `noc-client` Station Ops model APIs
+  - Status: planned, model review required before implementation.
+  - Context: Interpret raw Station Ops panel maps into stable departure and
+    arrival arrays. Use current Station Ops raw parsing and integration
+    knowledge for model review.
+  - Proposed model:
+    ```ts
+    export interface NocStationOpsOptions {
+      readonly date: StationOpsDateInput;
+      readonly stationCode?: string;
+      readonly sort?: StationOpsSort;
+      readonly timeMode?: StationOpsTimeMode;
+      readonly refreshPage?: boolean;
+    }
+
+    export interface NocStationOpsResult {
+      readonly departures: readonly NocStationOpsDeparture[];
+      readonly arrivals: readonly NocStationOpsArrival[];
+      readonly panels: readonly NocStationOpsPanel[];
+    }
+
+    export interface NocStationOpsPanel {
+      readonly label: string;
+      readonly rows: readonly NocStationOpsRow[];
+    }
+
+    export interface NocStationOpsDeparture {
+      readonly flight?: string;
+      readonly std?: string;
+      readonly atd?: string;
+      readonly destination?: string;
+      readonly registration?: string;
+      readonly gate?: string;
+      readonly pax?: string;
+      readonly color?: string;
+      readonly details: Readonly<Record<string, string>>;
+    }
+
+    export interface NocStationOpsArrival {
+      readonly flight?: string;
+      readonly sta?: string;
+      readonly ata?: string;
+      readonly origin?: string;
+      readonly registration?: string;
+      readonly gate?: string;
+      readonly pax?: string;
+      readonly color?: string;
+      readonly details: Readonly<Record<string, string>>;
+    }
+
+    export type NocStationOpsRow = NocStationOpsDeparture | NocStationOpsArrival;
+    ```
+  - Expected behavior: client API accepts `stationCode`, not public
+    `stationId`; map known panel labels to `departures` and `arrivals`; keep
+    `panels` so unusual NOC labels remain visible.
+  - Verification: `npm run format`, `npm run build`, and Station Ops
+    mapping/unit tests from existing browser fixtures.
+  - Commit message:
+    ```text
+    Add Station Ops model APIs to noc-client
+    ```
+- [ ] Phase 7.7: `noc-client` CLI commands
+  - Status: planned, model review required before implementation.
+  - Context: Wire `packages/noc-cli/src/noc-client.ts` after accepted library
+    APIs exist. `noc-browser` CLI remains available for raw debugging and keeps
+    its exceptional `--employee-num` roster convenience.
+  - Proposed command output model: commands print accepted `noc-client` result
+    models directly.
+  - Candidate commands: `auth`, `crew`, `current-crew`,
+    `crew-member --employee-num`, `roster --month --year --employee-num`,
+    `roster --month --year --current-user`,
+    `roster-monthly-values --month --year --employee-num|--current-user`,
+    `open-time-*`, `revision`, `revision-status`,
+    `confirm-revision --confirm`, and `station-ops --date --station-code`.
+  - Verification: `npm run format`, `npm run build`, and CLI unit/smoke tests.
+  - Commit message:
+    ```text
+    Wire noc-client CLI commands
+    ```
 - [ ] Future improvement
 
 ## Done

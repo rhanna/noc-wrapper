@@ -366,3 +366,32 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
   NocBrowser is not a product abstraction. It is a faithful low-level NOC portal interaction layer. If a feature requires
   interpreting, sorting, enriching, convenience lookup, retrying, or deciding what the user probably wants, do not put that
   behavior in NocBrowser. Browser result types must use `ResultRaw`; semantic `Result` types belong in `noc-client`.
+
+  Phase 7 `noc-client` plan:
+
+  `@scope/noc-client` is the higher-order wrapper layer for interpreted/domain APIs. It may normalize, compose browser
+  calls, perform explicit convenience lookup, and expose unsuffixed `Result` types. It must not mutate the
+  `@rhanna/noc-browser` raw API contract.
+
+  Before implementing each Phase 7 sub-phase, review the proposed public data model in `.agents/tasks.md` with the user.
+  Do not start implementation for that sub-phase until the model is accepted.
+
+  Cross-phase rules:
+
+  - Use "crew" naming in `noc-client`, not "human resources".
+  - Do not expose `hrId` in public `NocClient` options or results.
+  - Roster client APIs should work only by employee number or current user.
+  - Keep the existing employee-number convenience in `packages/noc-cli/src/noc-browser.ts` as an explicit exception.
+  - Duplicate employee-number parsing in `noc-client`; do not move it out of the raw `noc-browser` CLI.
+  - Keep revision confirmation manual and explicit.
+  - Generate one commit per completed sub-phase using the commit message recorded in `.agents/tasks.md`.
+
+  Phase split:
+
+  - Phase 7.1: `noc-client` foundation.
+  - Phase 7.2: Crew identity.
+  - Phase 7.3: Roster convenience APIs.
+  - Phase 7.4: Open Time convenience APIs.
+  - Phase 7.5: Revision model APIs.
+  - Phase 7.6: Station Ops model APIs.
+  - Phase 7.7: `noc-client` CLI commands.
