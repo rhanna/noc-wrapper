@@ -373,8 +373,9 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
   calls, perform explicit convenience lookup, and expose unsuffixed `Result` types. It must not mutate the
   `@rhanna/noc-browser` raw API contract.
 
-  Before implementing each Phase 7 sub-phase, review the proposed public data model in `.agents/tasks.md` with the user.
-  Do not start implementation for that sub-phase until the model is accepted.
+  Before implementing each Phase 7 sub-phase, review the proposed public data model and matching `noc-client` CLI
+  behavior in `.agents/tasks.md` with the user. Do not start implementation for that sub-phase until the model and CLI
+  behavior are accepted.
 
   Cross-phase rules:
 
@@ -384,14 +385,15 @@ Implement a type-safe `NocBrowser` library for the NOC web portal.
   - Keep the existing employee-number convenience in `packages/noc-cli/src/noc-browser.ts` as an explicit exception.
   - Duplicate employee-number parsing in `noc-client`; do not move it out of the raw `noc-browser` CLI.
   - Keep revision confirmation manual and explicit.
+  - Add `packages/noc-cli/src/noc-client.ts` commands in the same phase as each accepted `noc-client` domain API.
+  - `noc-client` CLI commands should print accepted `noc-client` result models directly as JSON.
   - Generate one commit per completed sub-phase using the commit message recorded in `.agents/tasks.md`.
 
   Phase split:
 
-  - Phase 7.1: `noc-client` foundation.
-  - Phase 7.2: Crew identity.
-  - Phase 7.3: Roster convenience APIs.
-  - Phase 7.4: Open Time convenience APIs.
-  - Phase 7.5: Revision model APIs.
-  - Phase 7.6: Station Ops model APIs.
-  - Phase 7.7: `noc-client` CLI commands.
+  - Phase 7.1: `noc-client` foundation and auth CLI.
+  - Phase 7.2: Crew identity APIs and CLI.
+  - Phase 7.3: Roster convenience APIs and CLI.
+  - Phase 7.4: Open Time convenience APIs and CLI.
+  - Phase 7.5: Revision model APIs and CLI.
+  - Phase 7.6: Station Ops model APIs and CLI.

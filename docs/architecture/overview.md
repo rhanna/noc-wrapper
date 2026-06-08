@@ -145,9 +145,9 @@ formatting, interpreted `Result` types, and CLI behavior are intentionally defer
 normalization, convenience lookup, composed calls, and caller-friendly workflows. Public client result contracts use
 unsuffixed `Result` names. The client must not change the browser package's raw APIs or `ResultRaw` contract.
 
-Phase 7 work is split into model-review-gated sub-phases. For each sub-phase, the proposed public data model must be
-reviewed before implementation starts. Each completed implementation phase should produce its own commit using the
-planned commit message in `.agents/tasks.md`.
+Phase 7 work is split into model-review-gated sub-phases. For each sub-phase, the proposed public data model and
+matching `noc-client` CLI behavior must be reviewed before implementation starts. Each completed implementation phase
+should produce its own commit using the planned commit message in `.agents/tasks.md`.
 
 Client boundary rules:
 
@@ -158,14 +158,19 @@ Client boundary rules:
 - Duplicate employee-number parsing in `noc-client`; do not move the raw CLI parsing helper into the client.
 - Keep revision confirmation manual and explicit.
 - Keep `noc-browser` low-level behavior raw and unchanged.
+- Add `packages/noc-cli/src/noc-client.ts` commands in the same phase as each accepted `noc-client` domain API.
+- Print accepted `noc-client` result models directly as JSON from the `noc-client` CLI.
 
 Planned sub-phases:
 
-- Phase 7.1 establishes `NocClient`, construction/session options, auth result types, revision acknowledgement details, and
-  `packages/noc-client` unit test wiring.
-- Phase 7.2 adds crew identity models and lookup by employee number while hiding private browser `hrId` use.
-- Phase 7.3 adds roster and monthly value convenience APIs using only current-user or employee-number targets.
-- Phase 7.4 adds Open Time convenience APIs that compose optional legality and block-detail browser calls.
-- Phase 7.5 adds Revision client models by converting dynamic raw sections into ordered section arrays.
-- Phase 7.6 adds Station Ops client models with stable departure and arrival arrays plus a panel fallback.
-- Phase 7.7 wires `noc-client` CLI commands after the accepted library APIs exist.
+- Phase 7.1 establishes `NocClient`, construction/session options, auth result types, `packages/noc-client` unit test
+  wiring, and the `noc-client auth` CLI foundation.
+- Phase 7.2 adds crew identity models, lookup by employee number while hiding private browser `hrId` use, and crew CLI
+  commands.
+- Phase 7.3 adds roster and monthly value convenience APIs using only current-user or employee-number targets plus roster
+  CLI commands.
+- Phase 7.4 adds Open Time convenience APIs that compose optional legality and block-detail browser calls plus Open Time
+  CLI commands.
+- Phase 7.5 adds Revision client models by converting dynamic raw sections into ordered section arrays plus revision CLI
+  commands.
+- Phase 7.6 adds Station Ops client models with stable departure and arrival arrays plus the Station Ops CLI command.

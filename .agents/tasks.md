@@ -4,43 +4,38 @@
 - None
 
 ## Backlog
-- [ ] Phase 7.1: `noc-client` foundation
+- [ ] Phase 7.1: `noc-client` foundation and auth CLI
   - Status: planned, model review required before implementation.
   - Context: Replace the placeholder `@scope/noc-client` export with the
     foundation for a higher-order client wrapper over `@rhanna/noc-browser`.
     This phase must not add domain-specific roster, crew, Open Time, Revision,
-    or Station Ops behavior yet.
+    or Station Ops behavior yet. It should also make the `noc-client`
+    executable useful for authentication only.
   - Proposed model:
     ```ts
-    export interface NocClientOptions {
-      readonly browser?: NocBrowser;
-      readonly browserOptions?: NocBrowserOptions;
-    }
+    export type NocClientOptions =
+      | { readonly browser: NocBrowser; readonly browserOptions?: never }
+      | { readonly browser?: never; readonly browserOptions: NocBrowserOptions };
 
     export interface NocClientAuthResult {
       readonly authenticated: true;
       readonly revisionAckRequired: boolean;
-      readonly revisionAckDetails?: NocRevisionAckDetails;
-    }
-
-    export interface NocRevisionAckDetails {
-      readonly currentUrl: string;
-      readonly title?: string;
-      readonly message?: string;
-      readonly confirmButtonPresent: boolean;
     }
     ```
   - Expected behavior: export `NocClient` and default `NocClient`; accept either
     an injected `NocBrowser` or browser construction options, but not both;
-    delegate authentication and revision-ack status without exposing browser raw
-    result names; add unit-test wiring for `packages/noc-client`.
-  - Verification: `npm run format`, `npm run build`, and relevant
-    `packages/noc-client` unit tests.
+    delegate authentication and expose only `authenticated` and
+    `revisionAckRequired`; add unit-test wiring for `packages/noc-client`.
+  - CLI behavior: add `noc-client auth`, reading `--username`, `--password`,
+    `--base-url`, or the existing `NOC_USERNAME`, `NOC_PASSWORD`, and
+    `NOC_BASE_URL` environment variables; print `NocClientAuthResult` as JSON.
+  - Verification: `npm run format`, `npm run build`, relevant
+    `packages/noc-client` unit tests, and a CLI auth smoke/unit test.
   - Commit message:
     ```text
-    Add noc-client foundation
+    Add noc-client foundation and auth CLI
     ```
-- [ ] Phase 7.2: `noc-client` Crew identity
+- [ ] Phase 7.2: `noc-client` Crew identity APIs and CLI
   - Status: planned, model review required before implementation.
   - Context: In `noc-client`, use "crew" naming instead of "human resources".
     Public `NocClient` APIs and results must not expose `hrId`. Internally,
@@ -78,13 +73,17 @@
     `EmpNo`, `EmployeeNum`, `EmployeeNumber`, and leading digits in
     `DisplayName`; handle no match, duplicate match, invalid employee number,
     and missing valid private `Id`.
-  - Verification: `npm run format`, `npm run build`, and crew unit tests using
-    sample/integration-contract shaped payloads.
+  - CLI behavior: add `noc-client crew`, `noc-client current-crew`, and
+    `noc-client crew-member --employee-num`; authenticate first using the same
+    credential and base-url inputs as `auth`; print the accepted `noc-client`
+    result model as JSON.
+  - Verification: `npm run format`, `npm run build`, crew unit tests using
+    sample/integration-contract shaped payloads, and crew CLI smoke/unit tests.
   - Commit message:
     ```text
-    Add crew identity APIs to noc-client
+    Add crew identity APIs and CLI
     ```
-- [ ] Phase 7.3: `noc-client` Roster convenience APIs
+- [ ] Phase 7.3: `noc-client` Roster convenience APIs and CLI
   - Status: planned, model review required before implementation.
   - Context: Expose roster APIs only by employee number or current user. Do not
     expose public `hrId` inputs or outputs. Use `samples/sample.getRoster.json`
@@ -176,13 +175,18 @@
     current user or employee number internally, then call `NocBrowser` with a
     private `hrId`; keep the existing `noc-browser` CLI `--employee-num`
     convenience intact.
-  - Verification: `npm run format`, `npm run build`, and roster mapping/unit
-    tests from existing samples.
+  - CLI behavior: add `noc-client roster --month --year --employee-num`,
+    `noc-client roster --month --year --current-user`, and
+    `noc-client roster-monthly-values --month --year --employee-num|--current-user`;
+    authenticate first using the same credential and base-url inputs as `auth`;
+    print the accepted `noc-client` result model as JSON.
+  - Verification: `npm run format`, `npm run build`, roster mapping/unit tests
+    from existing samples, and roster CLI smoke/unit tests.
   - Commit message:
     ```text
-    Add roster convenience APIs to noc-client
+    Add roster convenience APIs and CLI
     ```
-- [ ] Phase 7.4: `noc-client` Open Time convenience APIs
+- [ ] Phase 7.4: `noc-client` Open Time convenience APIs and CLI
   - Status: planned, model review required before implementation.
   - Context: Compose explicit browser Open Time calls at the client layer.
     Browser methods remain raw and separate. Use existing Open Time integration
@@ -246,13 +250,18 @@
   - Expected behavior: resolve default base from user context only when client
     options request it; optional legality and block details are client-level
     composed calls; do not add hidden fetching to `noc-browser`.
-  - Verification: `npm run format`, `npm run build`, and Open Time unit tests
-    using integration-contract shaped fixtures.
+  - CLI behavior: add `noc-client open-time-user-context`,
+    `noc-client open-time-roster`, and `noc-client open-time-pairings` with
+    options that match the accepted client APIs, including legality and block
+    detail toggles; authenticate first using the same credential and base-url
+    inputs as `auth`; print the accepted `noc-client` result model as JSON.
+  - Verification: `npm run format`, `npm run build`, Open Time unit tests using
+    integration-contract shaped fixtures, and Open Time CLI smoke/unit tests.
   - Commit message:
     ```text
-    Add Open Time convenience APIs to noc-client
+    Add Open Time convenience APIs and CLI
     ```
-- [ ] Phase 7.5: `noc-client` Revision model APIs
+- [ ] Phase 7.5: `noc-client` Revision model APIs and CLI
   - Status: planned, model review required before implementation.
   - Context: Interpret raw My Revision dynamic day properties into stable client
     sections. Confirmation remains explicit and non-automatic.
@@ -262,6 +271,12 @@
       readonly revisionAckRequired: boolean;
       readonly revisionAckDetails?: NocRevisionAckDetails;
       readonly days: readonly NocRevisionDay[];
+    }
+
+    export interface NocRevisionAckDetails {
+      readonly title?: string;
+      readonly message?: string;
+      readonly confirmButtonPresent: boolean;
     }
 
     export interface NocRevisionDay {
@@ -288,13 +303,19 @@
   - Expected behavior: preserve exact NOC section names in `section.name`; do
     not force semantic names like current/new unless those strings appear in NOC
     text; keep revision confirmation manual and explicit.
-  - Verification: `npm run format`, `npm run build`, and revision mapping/unit
-    tests from existing browser test fixtures.
+  - CLI behavior: add `noc-client revision`, `noc-client revision-status`, and
+    `noc-client confirm-revision --confirm`; authenticate first using the same
+    credential and base-url inputs as `auth`; never confirm a revision unless
+    `--confirm` is present; print the accepted `noc-client` result model as
+    JSON.
+  - Verification: `npm run format`, `npm run build`, revision mapping/unit
+    tests from existing browser test fixtures, and revision CLI smoke/unit
+    tests.
   - Commit message:
     ```text
-    Add revision model APIs to noc-client
+    Add revision model APIs and CLI
     ```
-- [ ] Phase 7.6: `noc-client` Station Ops model APIs
+- [ ] Phase 7.6: `noc-client` Station Ops model APIs and CLI
   - Status: planned, model review required before implementation.
   - Context: Interpret raw Station Ops panel maps into stable departure and
     arrival arrays. Use current Station Ops raw parsing and integration
@@ -349,29 +370,15 @@
   - Expected behavior: client API accepts `stationCode`, not public
     `stationId`; map known panel labels to `departures` and `arrivals`; keep
     `panels` so unusual NOC labels remain visible.
-  - Verification: `npm run format`, `npm run build`, and Station Ops
-    mapping/unit tests from existing browser fixtures.
+  - CLI behavior: add `noc-client station-ops --date --station-code` with
+    options that match the accepted client API; authenticate first using the
+    same credential and base-url inputs as `auth`; print the accepted
+    `noc-client` result model as JSON.
+  - Verification: `npm run format`, `npm run build`, Station Ops mapping/unit
+    tests from existing browser fixtures, and Station Ops CLI smoke/unit tests.
   - Commit message:
     ```text
-    Add Station Ops model APIs to noc-client
-    ```
-- [ ] Phase 7.7: `noc-client` CLI commands
-  - Status: planned, model review required before implementation.
-  - Context: Wire `packages/noc-cli/src/noc-client.ts` after accepted library
-    APIs exist. `noc-browser` CLI remains available for raw debugging and keeps
-    its exceptional `--employee-num` roster convenience.
-  - Proposed command output model: commands print accepted `noc-client` result
-    models directly.
-  - Candidate commands: `auth`, `crew`, `current-crew`,
-    `crew-member --employee-num`, `roster --month --year --employee-num`,
-    `roster --month --year --current-user`,
-    `roster-monthly-values --month --year --employee-num|--current-user`,
-    `open-time-*`, `revision`, `revision-status`,
-    `confirm-revision --confirm`, and `station-ops --date --station-code`.
-  - Verification: `npm run format`, `npm run build`, and CLI unit/smoke tests.
-  - Commit message:
-    ```text
-    Wire noc-client CLI commands
+    Add Station Ops model APIs and CLI
     ```
 - [ ] Future improvement
 
