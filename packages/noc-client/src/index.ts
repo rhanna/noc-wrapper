@@ -35,6 +35,10 @@ export interface NocCrewNameSearchOptions {
   readonly name: string;
 }
 
+type NocCrewNameSearch =
+  | { readonly type: "text"; readonly name: string }
+  | { readonly type: "regex"; readonly pattern: RegExp };
+
 export class NocClient {
   readonly #browser: NocBrowser;
 
@@ -105,11 +109,11 @@ export class NocClient {
   }
 
   async findCrewByName(options: NocCrewNameSearchOptions): Promise<NocCrewListResult> {
-    const name = normalizeNameSearch(options?.name);
+    const search = readNameSearch(options?.name);
     const result = await this.#browser.getHumanResources();
     const crew = readHumanResources(result)
       .map(toNocCrew)
-      .filter((member) => readSearchableCrewName(member).includes(name));
+      .filter((member) => matchesCrewNameSearch(member, search));
 
     return { crew };
   }
@@ -221,9 +225,15 @@ function normalizeEmployeeNum(value: unknown): string {
   return normalized;
 }
 
-function normalizeNameSearch(value: unknown): string {
+function readNameSearch(value: unknown): NocCrewNameSearch {
   if (typeof value !== "string") {
     throw new Error("name is required");
+  }
+
+  const trimmed = value.trim();
+
+  if (trimmed.startsWith("/")) {
+    return readRegexNameSearch(trimmed);
   }
 
   const normalized = normalizeWhitespace(value).toLocaleLowerCase();
@@ -232,7 +242,41 @@ function normalizeNameSearch(value: unknown): string {
     throw new Error("name is required");
   }
 
-  return normalized;
+  return { type: "text", name: normalized };
+}
+
+function readRegexNameSearch(value: string): NocCrewNameSearch {
+  if (value === "/" || value === "//") {
+    throw new Error("name regex pattern is required");
+  }
+
+  const closingSlashIndex = value.lastIndexOf("/");
+
+  if (closingSlashIndex === 0) {
+    throw new Error("name regex must use /pattern/flags");
+  }
+
+  const pattern = value.slice(1, closingSlashIndex);
+  const flags = value.slice(closingSlashIndex + 1);
+
+  if (pattern.length === 0) {
+    throw new Error("name regex pattern is required");
+  }
+
+  try {
+    return { type: "regex", pattern: new RegExp(pattern, flags) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid name regex: ${message}`);
+  }
+}
+
+function matchesCrewNameSearch(crew: NocCrew, search: NocCrewNameSearch): boolean {
+  if (search.type === "regex") {
+    return search.pattern.test(crew.displayName);
+  }
+
+  return readSearchableCrewName(crew).includes(search.name);
 }
 
 function readSearchableCrewName(crew: NocCrew): string {

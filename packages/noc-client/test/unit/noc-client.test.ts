@@ -217,6 +217,61 @@ describe("NocClient", () => {
     });
   });
 
+  it("finds crew by regex name text with user-provided flags", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        { Id: 1, DisplayName: "11111 First Match" },
+        { Id: 2, DisplayName: "22222 Van Der Meer Anna Maria" },
+        { Id: 3, DisplayName: "33333 Hanna Robert" },
+      ],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.findCrewByName({ name: "/van der|HANNA/i" })).resolves.toEqual({
+      crew: [
+        {
+          employeeNum: "22222",
+          displayName: "Van Der Meer Anna Maria",
+        },
+        {
+          employeeNum: "33333",
+          displayName: "Hanna Robert",
+        },
+      ],
+    });
+  });
+
+  it("uses case-sensitive regex name searches by default", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [{ Id: 1, DisplayName: "11111 Hanna Robert" }],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.findCrewByName({ name: "/hanna/" })).resolves.toEqual({ crew: [] });
+  });
+
+  it("matches regex name searches against parsed display names only", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        { Id: 1, DisplayName: "11111 Visible Match" },
+        { Id: 2, DisplayName: "22222 Hidden Person", FirstName: "Visible" },
+      ],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.findCrewByName({ name: "/visible/i" })).resolves.toEqual({
+      crew: [
+        {
+          employeeNum: "11111",
+          displayName: "Visible Match",
+        },
+      ],
+    });
+  });
+
   it("rejects invalid employeeNum lookup input", async () => {
     const client = new NocClient({ browser: createBrowserMock() });
 
@@ -229,6 +284,39 @@ describe("NocClient", () => {
     const client = new NocClient({ browser: createBrowserMock() });
 
     await expect(client.findCrewByName({ name: "   " })).rejects.toThrow("name is required");
+  });
+
+  it("rejects empty name regex searches", async () => {
+    const client = new NocClient({ browser: createBrowserMock() });
+
+    await expect(client.findCrewByName({ name: "/" })).rejects.toThrow(
+      "name regex pattern is required",
+    );
+    await expect(client.findCrewByName({ name: "//" })).rejects.toThrow(
+      "name regex pattern is required",
+    );
+  });
+
+  it("rejects name regex searches without a closing delimiter", async () => {
+    const client = new NocClient({ browser: createBrowserMock() });
+
+    await expect(client.findCrewByName({ name: "/hanna" })).rejects.toThrow(
+      "name regex must use /pattern/flags",
+    );
+  });
+
+  it("rejects invalid name regex syntax", async () => {
+    const client = new NocClient({ browser: createBrowserMock() });
+
+    await expect(client.findCrewByName({ name: "/[/" })).rejects.toThrow("Invalid name regex:");
+  });
+
+  it("rejects invalid name regex flags", async () => {
+    const client = new NocClient({ browser: createBrowserMock() });
+
+    await expect(client.findCrewByName({ name: "/hanna/x" })).rejects.toThrow(
+      "Invalid name regex:",
+    );
   });
 
   it("rejects employeeNum lookup with no matching crew", async () => {

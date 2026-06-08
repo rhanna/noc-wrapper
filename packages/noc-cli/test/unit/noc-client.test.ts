@@ -219,6 +219,16 @@ describe("noc-client CLI", () => {
     expect(nocClientMock.getCrew).not.toHaveBeenCalled();
   });
 
+  it("crew passes regex name searches through unchanged", async () => {
+    await saveTestSession();
+
+    await runNocClientCli(["crew", "--name", "/hanna|robert/i"]);
+
+    expect(nocClientMock.authenticate).not.toHaveBeenCalled();
+    expect(nocClientMock.findCrewByName).toHaveBeenCalledWith({ name: "/hanna|robert/i" });
+    expect(nocClientMock.getCrew).not.toHaveBeenCalled();
+  });
+
   it("crew looks up one crew row when --employee-num is provided", async () => {
     await saveTestSession();
 
@@ -281,6 +291,7 @@ describe("noc-client CLI", () => {
     const help = String(logSpy.mock.calls[0]?.[0]);
     expect(help).toContain("crew");
     expect(help).toContain("current-crew");
+    expect(help).toContain("--name text|/regex/flags");
   });
 
   it("rejects unknown commands", async () => {

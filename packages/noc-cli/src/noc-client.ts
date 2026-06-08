@@ -45,7 +45,7 @@ const commands: Record<string, CommandSpec> = {
       ),
   },
   crew: {
-    description: "Print crew identity JSON. Optional --employee-num or --name.",
+    description: "Print crew identity JSON. Optional --employee-num or --name text|/regex/flags.",
     requiresAuth: true,
     run: async ({ client, flags }) => {
       const hasEmployeeNum = flags["employee-num"] !== undefined;
