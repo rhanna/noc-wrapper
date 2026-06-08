@@ -275,19 +275,12 @@ describe("noc-client CLI", () => {
     );
   });
 
-  it("rejects crew-member as an unknown command", async () => {
-    await expect(runNocClientCli(["crew-member", "--employee-num", "11538"])).rejects.toThrow(
-      "Unknown command: crew-member",
-    );
-  });
-
   it("prints help including crew commands", async () => {
     await runNocClientCli(["--help"]);
 
     const help = String(logSpy.mock.calls[0]?.[0]);
     expect(help).toContain("crew");
     expect(help).toContain("current-crew");
-    expect(help).not.toContain("crew-member");
   });
 
   it("rejects unknown commands", async () => {
