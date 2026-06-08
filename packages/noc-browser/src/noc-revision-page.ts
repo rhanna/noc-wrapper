@@ -16,9 +16,14 @@ import type { NocJsonObject } from "./types.js";
 const CONFIRM_REVISION_FIELD = "ctl00$MasterMain$btnConfirm";
 
 /**
- * Raw My Revision activity row keyed by the NOC table header text.
+ * Raw My Revision activity row preserving NOC activity and detail field text.
  */
-export type NocRevisionActivityRaw = NocJsonObject;
+export interface NocRevisionActivityRaw extends NocJsonObject {
+  /** Activity header fields keyed by the NOC activity label text. */
+  readonly Activity: NocJsonObject;
+  /** Activity detail fields keyed by the NOC detail label text. */
+  readonly ActivityDetails: NocJsonObject;
+}
 
 /**
  * Raw My Revision day parsed from one `.ListItem` section.
@@ -146,6 +151,10 @@ export function parseRevisionDays(html: string): readonly NocRevisionDayRaw[] {
 
 function parseRevisionDay($: CheerioAPI, $day: Cheerio<AnyNode>): NocRevisionDayRaw {
   const date = textFrom($day.find(".ItemDayHeader").first());
+  const activityLabels = $day
+    .find("itemdetailslabels td")
+    .toArray()
+    .map((cell) => textFrom($(cell)));
   const sections: Record<string, NocRevisionActivityRaw[]> = {};
   const notes = $day
     .children(".ItemNotes")
@@ -168,7 +177,7 @@ function parseRevisionDay($: CheerioAPI, $day: Cheerio<AnyNode>): NocRevisionDay
     }
 
     const sectionRows = sections[activeSectionHeader] ?? [];
-    sectionRows.push(...parseActivityHolder($, $element));
+    sectionRows.push(parseActivityHolder($, $element, activityLabels));
     sections[activeSectionHeader] = sectionRows;
   });
 
@@ -182,25 +191,46 @@ function parseRevisionDay($: CheerioAPI, $day: Cheerio<AnyNode>): NocRevisionDay
 function parseActivityHolder(
   $: CheerioAPI,
   $holder: Cheerio<AnyNode>,
-): readonly NocRevisionActivityRaw[] {
-  const headers = $holder
+  activityLabels: readonly string[],
+): NocRevisionActivityRaw {
+  const activityValues = $holder
     .find(".ItemChildHeader td")
     .toArray()
     .map((cell) => textFrom($(cell)));
-  const details = $holder.find(".ItemChildDetails");
 
-  if (details.length === 0) {
-    return [mapHeadersToValues(headers, [])];
-  }
+  return {
+    Activity: mapHeadersToValues(activityLabels, activityValues),
+    ActivityDetails: parseActivityDetails($, $holder),
+  };
+}
 
-  return details.toArray().map((detailRow) => {
-    const values = $(detailRow)
-      .find("td")
+function parseActivityDetails(
+  $: CheerioAPI,
+  $holder: Cheerio<AnyNode>,
+): Readonly<Record<string, string>> {
+  const fields: Record<string, string> = {};
+  const detailRows = $holder
+    .find(".ItemChildDetails")
+    .toArray()
+    .flatMap((detailsElement) => {
+      const $details = $(detailsElement);
+
+      return $details.is("tr") ? [detailsElement] : $details.find("tr").toArray();
+    });
+
+  detailRows.forEach((detailRow) => {
+    const cells = $(detailRow)
+      .children("td")
       .toArray()
       .map((cell) => textFrom($(cell)));
+    const label = cells[0];
 
-    return mapHeadersToValues(headers, values);
+    if (label) {
+      fields[label] = cells[1] ?? "";
+    }
   });
+
+  return fields;
 }
 
 function mapHeadersToValues(

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NocAuthenticationError, NocBrowser, NocBrowserError } from "../../src/index.js";
 import { hasRevisionAckRequiredHtml, parseRevisionAckDetails } from "../../src/noc-revision-ack.js";
@@ -5,7 +6,7 @@ import { parseRevisionDays } from "../../src/noc-revision-page.js";
 import type { FetchLike } from "../../src/types.js";
 
 describe("Revision parsing", () => {
-  it("parses revision days into date, literal NOC sections, and field rows", () => {
+  it("parses revision days into date, literal NOC sections, activity fields, and detail fields", () => {
     const days = parseRevisionDays(revisionPageHtml());
 
     expect(days).toHaveLength(1);
@@ -15,36 +16,119 @@ describe("Revision parsing", () => {
     });
     expect(days[0]?.Revision).toEqual([
       {
-        Pairing: "AC123",
-        Report: "08:00",
-        Release: "16:45",
+        Activity: {
+          Pairing: "AC123",
+          Report: "08:00",
+          Release: "16:45",
+        },
+        ActivityDetails: {
+          "Revision note": "Added pairing",
+        },
       },
     ]);
     expect(days[0]?.Current).toEqual([
       {
-        Pairing: "RSV",
-        Report: "09:00",
-        Release: "17:00",
+        Activity: {
+          Pairing: "RSV",
+          Report: "09:00",
+          Release: "17:00",
+        },
+        ActivityDetails: {},
       },
     ]);
+  });
+
+  it("parses the live My Revision HAR sample into activity and detail maps", () => {
+    const days = parseRevisionDays(readSampleRevisionHtml());
+
+    expect(days).toHaveLength(2);
+    expect(days[0]?.date).toBe("Sun7");
+    expect(days[1]?.date).toBe("Mon8");
+    expect(days[0]?.Revision?.[0]).toEqual({
+      Activity: {
+        Activity: "P32316",
+        CI: "1610",
+        STD: "2226",
+        Dep: "YFC",
+        Arr: "YOW",
+        STA: "2252",
+        CO: "2312",
+        Reason: "",
+      },
+      ActivityDetails: {
+        Version: "DH4XX",
+        Type: "DH4",
+        "STD (UTC)": "2010",
+        "STA (UTC)": "2150",
+        "Roster Designators": "",
+        "Roster Legal Exception": "",
+      },
+    });
+    expect(days[0]?.Previous).toHaveLength(2);
+    expect(days[1]?.Revision).toHaveLength(3);
+    expect(days[1]?.Previous).toHaveLength(2);
+  });
+
+  it("uses activity labels from HTML instead of hard-coded names", () => {
+    const days = parseRevisionDays(`
+      <div class="ListItem">
+        <div class="ItemDayHeader">02 Jan 2026</div>
+        ${activityLabels("Foo Bar Baz")}
+        <div class="ItemDetailsHeader">Revision</div>
+        ${activityHolder("Alpha Beta")}
+      </div>
+    `);
+
+    expect(days[0]?.Revision).toEqual([
+      {
+        Activity: {
+          Foo: "Alpha",
+          Bar: "Beta",
+          Baz: "",
+        },
+        ActivityDetails: {},
+      },
+    ]);
+  });
+
+  it("uses activity detail labels from HTML instead of hard-coded names", () => {
+    const days = parseRevisionDays(`
+      <div class="ListItem">
+        <div class="ItemDayHeader">02 Jan 2026</div>
+        ${activityLabels("Pairing")}
+        <div class="ItemDetailsHeader">Revision</div>
+        ${activityHolder("AC123", [
+          ["Custom Detail", "First"],
+          ["Other Detail", "Second"],
+        ])}
+      </div>
+    `);
+
+    expect(days[0]?.Revision?.[0]).toMatchObject({
+      ActivityDetails: {
+        "Custom Detail": "First",
+        "Other Detail": "Second",
+      },
+    });
   });
 
   it("keeps New, Previous, and Old as literal section keys", () => {
     const days = parseRevisionDays(`
       <div class="ListItem">
         <div class="ItemDayHeader">02 Jan 2026</div>
+        ${activityLabels("Pairing")}
         <div class="ItemDetailsHeader">New</div>
-        ${activityHolder("Pairing", "NEW1")}
+        ${activityHolder("NEW1")}
         <div class="ItemDetailsHeader">Previous</div>
-        ${activityHolder("Pairing", "OLD1")}
+        ${activityHolder("OLD1")}
         <div class="ItemDetailsHeader">Old</div>
-        ${activityHolder("Pairing", "OLD2")}
+        ${activityHolder("OLD2")}
       </div>
     `);
 
-    expect(days[0]?.New).toEqual([{ Pairing: "NEW1" }]);
-    expect(days[0]?.Previous).toEqual([{ Pairing: "OLD1" }]);
-    expect(days[0]?.Old).toEqual([{ Pairing: "OLD2" }]);
+    expect(days[0]?.New).toEqual([{ Activity: { Pairing: "NEW1" }, ActivityDetails: {} }]);
+    expect(days[0]?.Previous).toEqual([{ Activity: { Pairing: "OLD1" }, ActivityDetails: {} }]);
+    expect(days[0]?.Old).toEqual([{ Activity: { Pairing: "OLD2" }, ActivityDetails: {} }]);
     expect(days[0]).not.toHaveProperty("revision");
     expect(days[0]).not.toHaveProperty("current");
   });
@@ -53,35 +137,45 @@ describe("Revision parsing", () => {
     const days = parseRevisionDays(`
       <div class="ListItem">
         <div class="ItemDayHeader">03 Jan 2026</div>
+        ${activityLabels("Pairing")}
         <div class="ItemDetailsHeader">Revision</div>
-        ${activityHolder("Pairing", "REV1")}
+        ${activityHolder("REV1")}
         <div class="ItemDetailsHeader">Revision</div>
-        ${activityHolder("Pairing", "REV2")}
+        ${activityHolder("REV2")}
       </div>
     `);
 
-    expect(days[0]?.Revision).toEqual([{ Pairing: "REV1" }, { Pairing: "REV2" }]);
+    expect(days[0]?.Revision).toEqual([
+      { Activity: { Pairing: "REV1" }, ActivityDetails: {} },
+      { Activity: { Pairing: "REV2" }, ActivityDetails: {} },
+    ]);
   });
 
   it("uses an empty string section key for holders before any section header", () => {
     const days = parseRevisionDays(`
       <div class="ListItem">
         <div class="ItemDayHeader">04 Jan 2026</div>
-        ${activityHolder("Pairing", "UNSECTIONED")}
+        ${activityLabels("Pairing")}
+        ${activityHolder("UNSECTIONED")}
       </div>
     `);
 
-    expect(days[0]?.[""]).toEqual([{ Pairing: "UNSECTIONED" }]);
+    expect(days[0]?.[""]).toEqual([{ Activity: { Pairing: "UNSECTIONED" }, ActivityDetails: {} }]);
   });
 
-  it("emits row fields only without legacy activity properties", () => {
+  it("emits activity and activity detail maps only without legacy activity properties", () => {
     const days = parseRevisionDays(revisionPageHtml());
     const row = Array.isArray(days[0]?.Revision) ? days[0]?.Revision[0] : undefined;
 
     expect(row).toEqual({
-      Pairing: "AC123",
-      Report: "08:00",
-      Release: "16:45",
+      Activity: {
+        Pairing: "AC123",
+        Report: "08:00",
+        Release: "16:45",
+      },
+      ActivityDetails: {
+        "Revision note": "Added pairing",
+      },
     });
     expect(row).not.toHaveProperty("section");
     expect(row).not.toHaveProperty("sectionHeader");
@@ -362,6 +456,20 @@ function htmlResponse(url: string, html: string): Response {
   return response;
 }
 
+function readSampleRevisionHtml(): string {
+  const sample = JSON.parse(
+    readFileSync(new URL("../../../../samples/sample.MyRevision.har", import.meta.url), "utf8"),
+  ) as {
+    readonly log: {
+      readonly entries: readonly {
+        readonly response: { readonly content: { readonly text: string } };
+      }[];
+    };
+  };
+
+  return sample.log.entries[0]?.response.content.text ?? "";
+}
+
 function revisionPageHtml({
   action = "HumanResourceMyRevision.aspx",
   confirmButton = false,
@@ -388,10 +496,11 @@ function revisionPageHtml({
           }
           <div class="ListItem">
             <div class="ItemDayHeader">01 Jan 2026</div>
+            ${activityLabels("Pairing Report Release")}
             <div class="ItemDetailsHeader">Revision</div>
-            ${activityHolder("Pairing Report Release", "AC123 08:00 16:45", "Revision note")}
+            ${activityHolder("AC123 08:00 16:45", [["Revision note", "Added pairing"]])}
             <div class="ItemDetailsHeader">Current</div>
-            ${activityHolder("Pairing Report Release", "RSV 09:00 17:00")}
+            ${activityHolder("RSV 09:00 17:00")}
             <div class="ItemNotes">Day note</div>
           </div>
         </form>
@@ -400,23 +509,47 @@ function revisionPageHtml({
   `;
 }
 
-function activityHolder(headerText: string, detailText: string, notes = ""): string {
-  const headers = headerText
+function activityLabels(labelText: string): string {
+  const labels = labelText
     .split(" ")
-    .map((header) => `<td>${header}</td>`)
+    .map((label) => `<td>${label}</td>`)
     .join("");
+
+  return `
+    <itemdetailslabels>
+      <table>
+        <tr>${labels}</tr>
+      </table>
+    </itemdetailslabels>
+  `;
+}
+
+function activityHolder(
+  detailText: string,
+  detailPairs: readonly (readonly [string, string])[] = [],
+): string {
   const values = detailText
     .split(" ")
     .map((value) => `<td>${value}</td>`)
     .join("");
+  const detailRows = detailPairs
+    .map(
+      ([label, value]) => `<tr><td class="right">${label}</td><td class="left">${value}</td></tr>`,
+    )
+    .join("");
 
   return `
     <div class="ItemChildHolder">
-      <table>
-        <tr class="ItemChildHeader">${headers}</tr>
-        <tr class="ItemChildDetails">${values}</tr>
-      </table>
-      ${notes ? `<div class="ItemNotes">${notes}</div>` : ""}
+      <div class="ItemChildHeader">
+        <table>
+          <tr>${values}</tr>
+        </table>
+      </div>
+      <div class="ItemChildDetails">
+        <table>
+          ${detailRows}
+        </table>
+      </div>
     </div>
   `;
 }

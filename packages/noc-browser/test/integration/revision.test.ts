@@ -27,18 +27,18 @@ describe("My Revision integration", () => {
       expect(Array.isArray(revision.days)).toBe(true);
 
       const changedDays = revision.days.filter((day) => getRevisionSections(day).length > 0);
+      expect(changedDays.length).toBeGreaterThan(0);
 
-      if (changedDays.length > 0) {
-        const firstChangedDay = changedDays[0];
-        const firstSection = firstChangedDay ? getRevisionSections(firstChangedDay)[0] : undefined;
-        const firstActivity = firstSection?.rows[0];
+      const firstChangedDay = changedDays[0];
+      const firstSection = firstChangedDay ? getRevisionSections(firstChangedDay)[0] : undefined;
+      const firstActivity = firstSection?.rows[0];
 
-        expect(firstChangedDay?.date).toEqual(expect.any(String));
-        expect(firstChangedDay?.date.length).toBeGreaterThan(0);
-        expect(firstSection?.header).toEqual(expect.any(String));
-        expect(firstSection?.rows.length).toBeGreaterThan(0);
-        expect(Object.keys(firstActivity ?? {}).length).toBeGreaterThan(0);
-      }
+      expect(firstChangedDay?.date).toEqual(expect.any(String));
+      expect(firstChangedDay?.date.length).toBeGreaterThan(0);
+      expect(firstSection?.header).toEqual(expect.any(String));
+      expect(firstSection?.rows.length).toBeGreaterThan(0);
+      expect(Object.keys(firstActivity?.Activity ?? {}).length).toBeGreaterThan(0);
+      expect(Object.keys(firstActivity?.ActivityDetails ?? {}).length).toBeGreaterThan(0);
 
       if (revision.revisionAckRequired) {
         expect(revision.revisionAckDetails?.confirmButtonPresent).toBe(true);
@@ -66,6 +66,15 @@ function isActivityRows(value: unknown): value is readonly NocRevisionActivityRa
   return (
     Array.isArray(value) &&
     value.length > 0 &&
-    value.every((row) => typeof row === "object" && row !== null && !Array.isArray(row))
+    value.every(
+      (row) =>
+        typeof row === "object" &&
+        row !== null &&
+        !Array.isArray(row) &&
+        typeof row.Activity === "object" &&
+        row.Activity !== null &&
+        typeof row.ActivityDetails === "object" &&
+        row.ActivityDetails !== null,
+    )
   );
 }
