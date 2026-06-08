@@ -44,39 +44,47 @@
     convenience behavior out of `packages/noc-cli/src/noc-browser.ts`.
   - Proposed model:
     ```ts
-    export interface NocCrewMember {
-      readonly employeeNumber?: string;
+    export interface NocCrew {
+      readonly employeeNum: string;
       readonly displayName: string;
-      readonly firstName?: string;
-      readonly lastName?: string;
-      readonly status?: string;
     }
 
-    export interface NocCurrentCrewMemberResult {
-      readonly crewMember: NocCrewMember;
+    export interface NocCurrentCrewResult {
+      readonly crew: NocCrew;
     }
 
     export interface NocCrewListResult {
-      readonly crew: readonly NocCrewMember[];
+      readonly crew: readonly NocCrew[];
     }
 
     export interface NocCrewLookupOptions {
-      readonly employeeNumber: string;
+      readonly employeeNum: string;
     }
 
     export interface NocCrewLookupResult {
-      readonly crewMember: NocCrewMember;
+      readonly crew: NocCrew;
+    }
+
+    export interface NocCrewNameSearchOptions {
+      readonly name: string;
     }
     ```
-  - Expected behavior: add `getCrew()`, `getCurrentCrewMember()`, and
-    `getCrewMemberByEmployeeNumber()`; support employee-number candidates from
-    `EmpNo`, `EmployeeNum`, `EmployeeNumber`, and leading digits in
-    `DisplayName`; handle no match, duplicate match, invalid employee number,
-    and missing valid private `Id`.
-  - CLI behavior: add `noc-client crew`, `noc-client current-crew`, and
-    `noc-client crew-member --employee-num`; authenticate first using the same
-    credential and base-url inputs as `auth`; print the accepted `noc-client`
-    result model as JSON.
+  - Expected behavior: add `getCrew()`, `getCurrentCrew()`,
+    `getCrewByEmployeeNum()`, and `findCrewByName()`; derive `employeeNum` from
+    leading digits in `DisplayName`; keep `displayName` because live NOC
+    `FirstName` and `LastName` are null and 3+ token names cannot be split
+    safely; strip the leading employee number from public `displayName`; resolve
+    `getCurrentCrew()` through `GetHumanResources` after reading the current
+    user's employee number because `GetCurrentUserInfo` may return only the
+    employee number as `DisplayName`; do not expose `Status` because live NOC
+    currently returns it as null for every crew row; handle no match, duplicate
+    match, invalid employee number, invalid name search, invalid payloads, and
+    missing valid private `Id`.
+  - CLI behavior: support `noc-client crew`,
+    `noc-client crew --employee-num`, `noc-client crew --name`, and
+    `noc-client current-crew`; authenticate first using the same credential and
+    base-url inputs as `auth`; print the accepted `noc-client` result model as
+    JSON.
   - Verification: `npm run format`, `npm run build`, crew unit tests using
     sample/integration-contract shaped payloads, and crew CLI smoke/unit tests.
   - Commit message:
@@ -93,7 +101,7 @@
     ```ts
     export type NocRosterTarget =
       | { readonly currentUser: true }
-      | { readonly employeeNumber: string };
+      | { readonly employeeNum: string };
 
     export interface NocRosterOptions {
       readonly month: number;
@@ -110,9 +118,9 @@
     }
 
     export interface NocRosterResolvedTarget {
-      readonly kind: "currentUser" | "employeeNumber";
-      readonly employeeNumber?: string;
-      readonly crewMember?: NocCrewMember;
+      readonly kind: "currentUser" | "employeeNum";
+      readonly employeeNum?: string;
+      readonly crew?: NocCrew;
     }
 
     export interface NocRosterDay {

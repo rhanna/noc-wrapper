@@ -110,6 +110,196 @@ describe("NocClient", () => {
 
     await expect(client.authenticate("bad-user", "bad-password")).rejects.toBe(error);
   });
+
+  it("maps crew rows from HumanResources without exposing private fields", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        {
+          Id: 9227,
+          DisplayName: "11538 Hanna Robert",
+          FirstName: null,
+          LastName: null,
+          Status: null,
+        },
+        {
+          Id: 3201,
+          DisplayName: "12345 Van Der Meer Anna Maria",
+          FirstName: null,
+          LastName: null,
+          Status: null,
+        },
+      ],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getCrew()).resolves.toEqual({
+      crew: [
+        {
+          employeeNum: "11538",
+          displayName: "Hanna Robert",
+        },
+        {
+          employeeNum: "12345",
+          displayName: "Van Der Meer Anna Maria",
+        },
+      ],
+    });
+  });
+
+  it("maps current crew from Info.CurrentUser", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getCurrentUserInfo).mockResolvedValue({
+      Info: {
+        CurrentUser: {
+          Id: 9227,
+          DisplayName: "11538",
+          FirstName: null,
+          LastName: null,
+          Status: null,
+        },
+      },
+    });
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        { Id: 3201, DisplayName: "12345 Other Crew" },
+        { Id: 9227, DisplayName: "11538 Hanna Robert" },
+      ],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getCurrentCrew()).resolves.toEqual({
+      crew: {
+        employeeNum: "11538",
+        displayName: "Hanna Robert",
+      },
+    });
+    expect(browser.getCurrentUserInfo).toHaveBeenCalledWith();
+    expect(browser.getHumanResources).toHaveBeenCalledWith();
+  });
+
+  it("looks up crew by employeeNum", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        { Id: 1, DisplayName: "11111 First Match" },
+        { Id: 2, DisplayName: "22222 Target Crew" },
+      ],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getCrewByEmployeeNum({ employeeNum: "22222" })).resolves.toEqual({
+      crew: {
+        employeeNum: "22222",
+        displayName: "Target Crew",
+      },
+    });
+  });
+
+  it("finds crew by normalized name text", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        { Id: 1, DisplayName: "11111 First Match" },
+        { Id: 2, DisplayName: "22222 Van Der Meer Anna Maria" },
+        { Id: 3, DisplayName: "33333 Another Person" },
+      ],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.findCrewByName({ name: " der   meer " })).resolves.toEqual({
+      crew: [
+        {
+          employeeNum: "22222",
+          displayName: "Van Der Meer Anna Maria",
+        },
+      ],
+    });
+  });
+
+  it("rejects invalid employeeNum lookup input", async () => {
+    const client = new NocClient({ browser: createBrowserMock() });
+
+    await expect(client.getCrewByEmployeeNum({ employeeNum: "12A45" })).rejects.toThrow(
+      "employeeNum must contain only digits",
+    );
+  });
+
+  it("rejects missing name search input", async () => {
+    const client = new NocClient({ browser: createBrowserMock() });
+
+    await expect(client.findCrewByName({ name: "   " })).rejects.toThrow("name is required");
+  });
+
+  it("rejects employeeNum lookup with no matching crew", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [{ Id: 1, DisplayName: "11111 First Match" }],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getCrewByEmployeeNum({ employeeNum: "99999" })).rejects.toThrow(
+      "No crew row found for employee number: 99999",
+    );
+  });
+
+  it("rejects employeeNum lookup with duplicate matching crew", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        { Id: 1, DisplayName: "11111 First Match" },
+        { Id: 2, DisplayName: "11111 Duplicate Match" },
+      ],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getCrewByEmployeeNum({ employeeNum: "11111" })).rejects.toThrow(
+      "Multiple crew rows found for employee number: 11111",
+    );
+  });
+
+  it("rejects invalid HumanResources payloads", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({});
+    const client = new NocClient({ browser });
+
+    await expect(client.getCrew()).rejects.toThrow(
+      "GetHumanResources response is missing HumanResources",
+    );
+  });
+
+  it("rejects crew rows without leading employee numbers", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [{ Id: 1, DisplayName: "Hanna Robert" }],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getCrew()).rejects.toThrow(
+      "Crew row display name does not start with an employee number: Hanna Robert",
+    );
+  });
+
+  it("rejects lookup matches without a valid private Id", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [{ Id: null, DisplayName: "11111 First Match" }],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getCrewByEmployeeNum({ employeeNum: "11111" })).rejects.toThrow(
+      "Crew row for employee number 11111 has no valid private Id",
+    );
+  });
+
+  it("passes crew browser errors through unchanged", async () => {
+    const error = new Error("revision acknowledgement required");
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockRejectedValue(error);
+    const client = new NocClient({ browser });
+
+    await expect(client.getCrew()).rejects.toBe(error);
+  });
 });
 
 function createBrowserMock(
@@ -124,7 +314,11 @@ function createBrowserMock(
       ? vi.fn().mockRejectedValue(authResult)
       : vi.fn().mockResolvedValue(authResult);
 
-  return { authenticate } as unknown as NocBrowser;
+  return {
+    authenticate,
+    getCurrentUserInfo: vi.fn(),
+    getHumanResources: vi.fn(),
+  } as unknown as NocBrowser;
 }
 
 function createFetch(responses: Record<string, Response>): NonNullable<NocBrowserOptions["fetch"]> {
