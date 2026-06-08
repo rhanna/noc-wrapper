@@ -3,6 +3,7 @@
 import { fileURLToPath } from "node:url";
 import { NocAuthenticationError } from "@rhanna/noc-browser";
 import { NocClient } from "@scope/noc-client";
+import type { NocCrew, NocCrewListResult } from "@scope/noc-client";
 import type { CookieJar } from "tough-cookie";
 import {
   parseArgs,
@@ -22,6 +23,8 @@ import {
 
 const DEFAULT_BASE_URL = "https://poe.noc.vmc.navblue.cloud/RaidoMobile";
 const DEFAULT_REAUTH_ATTEMPTS = 3;
+
+type CrewSortKey = "employee-num" | "name";
 
 interface CommandContext {
   readonly client: NocClient;
@@ -45,11 +48,13 @@ const commands: Record<string, CommandSpec> = {
       ),
   },
   crew: {
-    description: "Print crew identity JSON. Optional --employee-num or --name text|/regex/flags.",
+    description:
+      "Print crew identity JSON. Optional --employee-num, --name text|/regex/flags, or --sort employee-num|name.",
     requiresAuth: true,
     run: async ({ client, flags }) => {
       const hasEmployeeNum = flags["employee-num"] !== undefined;
       const hasName = flags.name !== undefined;
+      const sort = readCrewSortKey(flags);
 
       if (hasEmployeeNum && hasName) {
         throw new Error("crew accepts either --employee-num or --name, not both");
@@ -62,10 +67,10 @@ const commands: Record<string, CommandSpec> = {
 
       if (hasName) {
         const name = requireString(flags, "name");
-        return client.findCrewByName({ name });
+        return sortCrewListResult(await client.findCrewByName({ name }), sort);
       }
 
-      return client.getCrew();
+      return sortCrewListResult(await client.getCrew(), sort);
     },
   },
   "current-crew": {
@@ -145,6 +150,42 @@ function createClient(baseUrl: string, cookieJar: CookieJar): NocClient {
       cookieJar,
     },
   });
+}
+
+function readCrewSortKey(flags: Readonly<Record<string, string | boolean>>): CrewSortKey {
+  if (flags.sort === undefined) {
+    return "employee-num";
+  }
+
+  const sort = requireString(flags, "sort");
+
+  if (sort === "employee-num" || sort === "name") {
+    return sort;
+  }
+
+  throw new Error("Option --sort must be employee-num or name");
+}
+
+function sortCrewListResult(result: NocCrewListResult, sort: CrewSortKey): NocCrewListResult {
+  return {
+    crew: [...result.crew].sort((left, right) => compareCrew(left, right, sort)),
+  };
+}
+
+function compareCrew(left: NocCrew, right: NocCrew, sort: CrewSortKey): number {
+  if (sort === "name") {
+    return compareCrewName(left, right) || compareCrewEmployeeNum(left, right);
+  }
+
+  return compareCrewEmployeeNum(left, right) || compareCrewName(left, right);
+}
+
+function compareCrewEmployeeNum(left: NocCrew, right: NocCrew): number {
+  return left.employeeNum.localeCompare(right.employeeNum, undefined, { numeric: true });
+}
+
+function compareCrewName(left: NocCrew, right: NocCrew): number {
+  return left.displayName.localeCompare(right.displayName);
 }
 
 async function runAuthCommand(

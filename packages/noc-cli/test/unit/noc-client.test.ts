@@ -186,6 +186,14 @@ describe("noc-client CLI", () => {
           employeeNum: "11538",
           displayName: "Hanna Robert",
         },
+        {
+          employeeNum: "9",
+          displayName: "Earlier Crew",
+        },
+        {
+          employeeNum: "22222",
+          displayName: "Later Crew",
+        },
       ],
     });
 
@@ -197,6 +205,53 @@ describe("noc-client CLI", () => {
       JSON.stringify(
         {
           crew: [
+            {
+              employeeNum: "9",
+              displayName: "Earlier Crew",
+            },
+            {
+              employeeNum: "11538",
+              displayName: "Hanna Robert",
+            },
+            {
+              employeeNum: "22222",
+              displayName: "Later Crew",
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+  });
+
+  it("crew sorts crew lists by name when requested", async () => {
+    await saveTestSession();
+    nocClientMock.getCrew.mockResolvedValue({
+      crew: [
+        {
+          employeeNum: "11538",
+          displayName: "Hanna Robert",
+        },
+        {
+          employeeNum: "22222",
+          displayName: "Anna Target",
+        },
+      ],
+    });
+
+    await runNocClientCli(["crew", "--sort", "name"]);
+
+    expect(nocClientMock.authenticate).not.toHaveBeenCalled();
+    expect(nocClientMock.getCrew).toHaveBeenCalledWith();
+    expect(logSpy).toHaveBeenCalledWith(
+      JSON.stringify(
+        {
+          crew: [
+            {
+              employeeNum: "22222",
+              displayName: "Anna Target",
+            },
             {
               employeeNum: "11538",
               displayName: "Hanna Robert",
@@ -217,6 +272,45 @@ describe("noc-client CLI", () => {
     expect(nocClientMock.authenticate).not.toHaveBeenCalled();
     expect(nocClientMock.findCrewByName).toHaveBeenCalledWith({ name: "hanna" });
     expect(nocClientMock.getCrew).not.toHaveBeenCalled();
+  });
+
+  it("crew sorts name search results", async () => {
+    await saveTestSession();
+    nocClientMock.findCrewByName.mockResolvedValue({
+      crew: [
+        {
+          employeeNum: "22222",
+          displayName: "Later Crew",
+        },
+        {
+          employeeNum: "11538",
+          displayName: "Hanna Robert",
+        },
+      ],
+    });
+
+    await runNocClientCli(["crew", "--name", "/crew|hanna/i"]);
+
+    expect(nocClientMock.authenticate).not.toHaveBeenCalled();
+    expect(nocClientMock.findCrewByName).toHaveBeenCalledWith({ name: "/crew|hanna/i" });
+    expect(logSpy).toHaveBeenCalledWith(
+      JSON.stringify(
+        {
+          crew: [
+            {
+              employeeNum: "11538",
+              displayName: "Hanna Robert",
+            },
+            {
+              employeeNum: "22222",
+              displayName: "Later Crew",
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
   });
 
   it("crew passes regex name searches through unchanged", async () => {
@@ -264,6 +358,18 @@ describe("noc-client CLI", () => {
     expect(nocClientMock.findCrewByName).not.toHaveBeenCalled();
   });
 
+  it("crew rejects invalid sort keys", async () => {
+    await saveTestSession();
+
+    await expect(runNocClientCli(["crew", "--sort", "seniority"])).rejects.toThrow(
+      "Option --sort must be employee-num or name",
+    );
+
+    expect(nocClientMock.getCrew).not.toHaveBeenCalled();
+    expect(nocClientMock.getCrewByEmployeeNum).not.toHaveBeenCalled();
+    expect(nocClientMock.findCrewByName).not.toHaveBeenCalled();
+  });
+
   it("current-crew uses the saved session, fetches current crew, and prints JSON", async () => {
     await saveTestSession();
 
@@ -292,6 +398,7 @@ describe("noc-client CLI", () => {
     expect(help).toContain("crew");
     expect(help).toContain("current-crew");
     expect(help).toContain("--name text|/regex/flags");
+    expect(help).toContain("--sort employee-num|name");
   });
 
   it("rejects unknown commands", async () => {
