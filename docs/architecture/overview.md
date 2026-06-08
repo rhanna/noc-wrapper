@@ -161,10 +161,29 @@ Client boundary rules:
 - Add `packages/noc-cli/src/noc-client.ts` commands in the same phase as each accepted `noc-client` domain API.
 - Print accepted `noc-client` result models directly as JSON from the `noc-client` CLI.
 
+### `noc-client` CLI Session Persistence
+
+Persistent authentication state belongs only to `@scope/noc-cli`. `@scope/noc-client` remains a stateless interpreted
+wrapper over the injected `NocBrowser` session, and `@rhanna/noc-browser` remains low-level: it does not retry, re-login,
+or implement persistent CLI workflows.
+
+The `noc-client` executable stores only NOC session cookies and session metadata. It must never persist usernames,
+passwords, or other credential material. `noc-client auth` authenticates with credentials from `--username`/`--password`
+or `NOC_USERNAME`/`NOC_PASSWORD`, then saves the authenticated cookie jar for the configured base URL. Auth-required
+`noc-client` commands load that saved cookie jar and execute without calling `authenticate`. If no saved session exists,
+they fail with guidance to run `noc-client auth`.
+
+Session expiry is detected reactively. When an auth-required command using a saved session receives a
+`NocAuthenticationError`, the CLI may attempt re-authentication and retry the original command. Re-authentication uses
+only credentials supplied by flags or environment variables; if credentials are unavailable, the CLI reports the expired
+session and tells the user to authenticate again. Re-authentication attempts are controlled by `--reauth-attempts` or
+`NOC_REAUTH_ATTEMPTS`, default to `3`, and can be disabled with `0`. Credential authentication failures are surfaced
+without repeated retries. `noc-client logout` deletes the saved session for the active base URL.
+
 Planned sub-phases:
 
 - Phase 7.1 establishes `NocClient`, construction/session options, auth result types, `packages/noc-client` unit test
-  wiring, and the `noc-client auth` CLI foundation.
+  wiring, persistent `noc-client` CLI session storage, `noc-client auth`, and `noc-client logout`.
 - Phase 7.2 adds crew identity models, lookup by employee number while hiding private browser `hrId` use, and crew CLI
   commands.
 - Phase 7.3 adds roster and monthly value convenience APIs using only current-user or employee-number targets plus roster
