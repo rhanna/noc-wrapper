@@ -10,7 +10,7 @@
     "build": "npm --workspaces --if-present run build",
     "format": "prettier --write .",
     "test": "npm run test:unit",
-    "test:unit": "npm --workspace @rhanna/noc-browser run test:unit",
+    "test:unit": "npm --workspaces --if-present run test:unit",
     "test:integration": "npm --workspace @rhanna/noc-browser run test:integration",
     "test:all": "npm run test:unit && npm run test:integration"
   },
