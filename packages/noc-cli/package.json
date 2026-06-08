@@ -15,9 +15,12 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run test:unit",
+    "test:unit": "tsc -p tsconfig.test.json --noEmit && vitest run --config vitest.unit.config.ts"
   },
   "dependencies": {
-    "@rhanna/noc-browser": "0.0.0"
+    "@rhanna/noc-browser": "0.0.0",
+    "@scope/noc-client": "0.0.0"
   }
 }
