@@ -7,12 +7,14 @@ import type { NocCrew, NocCrewListResult } from "@scope/noc-client";
 import type { CookieJar } from "tough-cookie";
 import {
   parseArgs,
+  parseOutputFormat,
   printCliError,
+  printFormatted,
   printHelp,
-  printJson,
   readString,
   requireInteger,
   requireString,
+  type OutputFormat,
 } from "./cli-utils.js";
 import {
   createNocClientSessionCookieJar,
@@ -102,17 +104,21 @@ export async function runNocClientCli(args: readonly string[]): Promise<void> {
   }
 
   const baseUrl = readString(cli.flags, "base-url") ?? process.env.NOC_BASE_URL ?? DEFAULT_BASE_URL;
+  const format = readOutputFormat(cli.flags);
 
   if (cli.command === "logout") {
-    printJson({
-      loggedOut: await deleteNocClientSession(baseUrl),
-    });
+    printFormatted(
+      {
+        loggedOut: await deleteNocClientSession(baseUrl),
+      },
+      format,
+    );
     return;
   }
 
   const result = await runCommand(command, cli.command, cli.flags, baseUrl);
 
-  printJson(result);
+  printFormatted(result, format);
 }
 
 async function runCommand(
@@ -278,6 +284,22 @@ function readReauthAttempts(flags: Readonly<Record<string, string | boolean>>): 
   return attempts;
 }
 
+function readOutputFormat(flags: Readonly<Record<string, string | boolean>>): OutputFormat {
+  const cliFormat = readString(flags, "format");
+
+  if (cliFormat !== undefined) {
+    return parseOutputFormat(cliFormat, "Option --format");
+  }
+
+  const envFormat = process.env.NOC_CLIENT_FORMAT;
+
+  if (envFormat) {
+    return parseOutputFormat(envFormat, "NOC_CLIENT_FORMAT");
+  }
+
+  return "table";
+}
+
 function readCliReauthAttempts(
   flags: Readonly<Record<string, string | boolean>>,
 ): number | undefined {
@@ -317,6 +339,7 @@ function printNocClientHelp(): void {
     executable: "noc-client",
     globalOptions: [
       "  --base-url <url>               Override NOC_BASE_URL.",
+      "  --format <json|table|csv>      Defaults to NOC_CLIENT_FORMAT or table.",
       "  --reauth-attempts <n>          Re-auth attempts after session expiry; default 3.",
       "  --username <username>          Credential source for auth or re-auth.",
       "  --password <password>          Credential source for auth or re-auth.",

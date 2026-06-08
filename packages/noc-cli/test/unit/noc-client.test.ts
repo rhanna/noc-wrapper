@@ -110,14 +110,11 @@ describe("noc-client CLI", () => {
     });
     expect(nocClientMock.authenticate).toHaveBeenCalledWith("11538", "ActualPassword123");
     expect(logSpy).toHaveBeenCalledWith(
-      JSON.stringify(
-        {
-          authenticated: true,
-          revisionAckRequired: false,
-        },
-        null,
-        2,
-      ),
+      [
+        "authenticated  revisionAckRequired",
+        "-------------  -------------------",
+        "true           false",
+      ].join("\n"),
     );
   });
 
@@ -154,7 +151,7 @@ describe("noc-client CLI", () => {
     nocClientMock.authenticate.mockClear();
     logSpy.mockClear();
 
-    await runNocClientCli(["current-crew"]);
+    await runNocClientCli(["current-crew", "--format", "json"]);
 
     expect(nocClientMock.authenticate).not.toHaveBeenCalled();
     expect(nocClientMock.getCurrentCrew).toHaveBeenCalledWith();
@@ -197,7 +194,15 @@ describe("noc-client CLI", () => {
       ],
     });
 
-    await runNocClientCli(["crew", "--username", "11538", "--password", "ActualPassword123"]);
+    await runNocClientCli([
+      "crew",
+      "--username",
+      "11538",
+      "--password",
+      "ActualPassword123",
+      "--format",
+      "json",
+    ]);
 
     expect(nocClientMock.authenticate).not.toHaveBeenCalled();
     expect(nocClientMock.getCrew).toHaveBeenCalledWith();
@@ -240,7 +245,7 @@ describe("noc-client CLI", () => {
       ],
     });
 
-    await runNocClientCli(["crew", "--sort", "name"]);
+    await runNocClientCli(["crew", "--sort", "name", "--format", "json"]);
 
     expect(nocClientMock.authenticate).not.toHaveBeenCalled();
     expect(nocClientMock.getCrew).toHaveBeenCalledWith();
@@ -289,7 +294,7 @@ describe("noc-client CLI", () => {
       ],
     });
 
-    await runNocClientCli(["crew", "--name", "/crew|hanna/i"]);
+    await runNocClientCli(["crew", "--name", "/crew|hanna/i", "--format", "json"]);
 
     expect(nocClientMock.authenticate).not.toHaveBeenCalled();
     expect(nocClientMock.findCrewByName).toHaveBeenCalledWith({ name: "/crew|hanna/i" });
@@ -326,7 +331,7 @@ describe("noc-client CLI", () => {
   it("crew looks up one crew row when --employee-num is provided", async () => {
     await saveTestSession();
 
-    await runNocClientCli(["crew", "--employee-num", "11538"]);
+    await runNocClientCli(["crew", "--employee-num", "11538", "--format", "json"]);
 
     expect(nocClientMock.authenticate).not.toHaveBeenCalled();
     expect(nocClientMock.getCrewByEmployeeNum).toHaveBeenCalledWith({ employeeNum: "11538" });
@@ -370,13 +375,26 @@ describe("noc-client CLI", () => {
     expect(nocClientMock.findCrewByName).not.toHaveBeenCalled();
   });
 
-  it("current-crew uses the saved session, fetches current crew, and prints JSON", async () => {
+  it("current-crew uses the saved session, fetches current crew, and prints a table by default", async () => {
     await saveTestSession();
 
     await runNocClientCli(["current-crew"]);
 
     expect(nocClientMock.authenticate).not.toHaveBeenCalled();
     expect(nocClientMock.getCurrentCrew).toHaveBeenCalledWith();
+    expect(logSpy).toHaveBeenCalledWith(
+      ["employeeNum  displayName", "-----------  ------------", "11538        Hanna Robert"].join(
+        "\n",
+      ),
+    );
+  });
+
+  it("uses NOC_CLIENT_FORMAT as the default output format", async () => {
+    await saveTestSession();
+    vi.stubEnv("NOC_CLIENT_FORMAT", "json");
+
+    await runNocClientCli(["current-crew"]);
+
     expect(logSpy).toHaveBeenCalledWith(
       JSON.stringify(
         {
@@ -391,6 +409,63 @@ describe("noc-client CLI", () => {
     );
   });
 
+  it("lets --format override NOC_CLIENT_FORMAT", async () => {
+    await saveTestSession();
+    vi.stubEnv("NOC_CLIENT_FORMAT", "json");
+
+    await runNocClientCli(["current-crew", "--format", "csv"]);
+
+    expect(logSpy).toHaveBeenCalledWith("employeeNum,displayName\n11538,Hanna Robert");
+  });
+
+  it("prints crew rows as CSV", async () => {
+    await saveTestSession();
+    nocClientMock.getCrew.mockResolvedValue({
+      crew: [
+        {
+          employeeNum: "11538",
+          displayName: "Hanna, Robert",
+        },
+      ],
+    });
+
+    await runNocClientCli(["crew", "--format", "csv"]);
+
+    expect(logSpy).toHaveBeenCalledWith('employeeNum,displayName\n11538,"Hanna, Robert"');
+  });
+
+  it("prints auth results as CSV", async () => {
+    await runNocClientCli([
+      "auth",
+      "--username",
+      "11538",
+      "--password",
+      "ActualPassword123",
+      "--format",
+      "csv",
+    ]);
+
+    expect(logSpy).toHaveBeenCalledWith("authenticated,revisionAckRequired\ntrue,false");
+  });
+
+  it("rejects invalid CLI output formats", async () => {
+    await expect(runNocClientCli(["auth", "--format", "yaml"])).rejects.toThrow(
+      "Option --format must be json, table, or csv",
+    );
+
+    expect(nocClientMock.authenticate).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid environment output formats", async () => {
+    vi.stubEnv("NOC_CLIENT_FORMAT", "yaml");
+
+    await expect(runNocClientCli(["auth"])).rejects.toThrow(
+      "NOC_CLIENT_FORMAT must be json, table, or csv",
+    );
+
+    expect(nocClientMock.authenticate).not.toHaveBeenCalled();
+  });
+
   it("prints help including crew commands", async () => {
     await runNocClientCli(["--help"]);
 
@@ -399,6 +474,7 @@ describe("noc-client CLI", () => {
     expect(help).toContain("current-crew");
     expect(help).toContain("--name text|/regex/flags");
     expect(help).toContain("--sort employee-num|name");
+    expect(help).toContain("--format <json|table|csv>");
   });
 
   it("rejects unknown commands", async () => {
@@ -479,13 +555,7 @@ describe("noc-client CLI", () => {
     await runNocClientCli(["logout"]);
 
     expect(logSpy).toHaveBeenCalledWith(
-      JSON.stringify(
-        {
-          loggedOut: true,
-        },
-        null,
-        2,
-      ),
+      ["loggedOut", "---------", "true"].join("\n"),
     );
     await expect(runNocClientCli(["current-crew"])).rejects.toThrow(
       "No saved noc-client session found. Run noc-client auth first.",

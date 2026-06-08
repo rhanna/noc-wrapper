@@ -133,6 +133,153 @@ export function printJson(value: unknown): void {
   console.log(JSON.stringify(value, null, 2));
 }
 
+export type OutputFormat = "json" | "table" | "csv";
+
+export function parseOutputFormat(value: string, source: string): OutputFormat {
+  if (value === "json" || value === "table" || value === "csv") {
+    return value;
+  }
+
+  throw new Error(`${source} must be json, table, or csv`);
+}
+
+export function printFormatted(value: unknown, format: OutputFormat): void {
+  if (format === "json") {
+    printJson(value);
+    return;
+  }
+
+  if (format === "csv") {
+    console.log(formatCsv(value));
+    return;
+  }
+
+  console.log(formatTable(value));
+}
+
+export function formatCsv(value: unknown): string {
+  const table = toOutputTable(value);
+
+  if (table.columns.length === 0) {
+    return "";
+  }
+
+  return [table.columns, ...table.rows]
+    .map((row) => row.map(formatCsvCell).join(","))
+    .join("\n");
+}
+
+export function formatTable(value: unknown): string {
+  const table = toOutputTable(value);
+
+  if (table.columns.length === 0) {
+    return "";
+  }
+
+  const rows = [table.columns, ...table.rows];
+  const widths = table.columns.map((_, columnIndex) =>
+    Math.max(...rows.map((row) => row[columnIndex]?.length ?? 0)),
+  );
+  const renderRow = (row: readonly string[]) =>
+    row.map((cell, index) => cell.padEnd(widths[index] ?? 0)).join("  ").trimEnd();
+  const separator = widths.map((width) => "-".repeat(width)).join("  ");
+
+  return [renderRow(table.columns), separator, ...table.rows.map(renderRow)].join("\n");
+}
+
+interface OutputTable {
+  readonly columns: readonly string[];
+  readonly rows: readonly (readonly string[])[];
+}
+
+function toOutputTable(value: unknown): OutputTable {
+  const rows = toOutputRows(unwrapOutputValue(value));
+  const columns = readColumns(rows);
+
+  return {
+    columns,
+    rows: rows.map((row) => columns.map((column) => formatCell(row[column]))),
+  };
+}
+
+function unwrapOutputValue(value: unknown): unknown {
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  const entries = Object.entries(value);
+
+  if (entries.length !== 1) {
+    return value;
+  }
+
+  const nested = entries[0]?.[1];
+
+  if (Array.isArray(nested) || isPlainObject(nested)) {
+    return nested;
+  }
+
+  return value;
+}
+
+function toOutputRows(value: unknown): readonly Record<string, unknown>[] {
+  if (Array.isArray(value)) {
+    return value.map((item, index) =>
+      isPlainObject(item) ? item : { value: item, index: index + 1 },
+    );
+  }
+
+  if (isPlainObject(value)) {
+    return [value];
+  }
+
+  return [{ value }];
+}
+
+function readColumns(rows: readonly Record<string, unknown>[]): readonly string[] {
+  const columns: string[] = [];
+  const seen = new Set<string>();
+
+  for (const row of rows) {
+    for (const column of Object.keys(row)) {
+      if (!seen.has(column)) {
+        seen.add(column);
+        columns.push(column);
+      }
+    }
+  }
+
+  return columns;
+}
+
+function formatCell(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+}
+
+function formatCsvCell(value: string): string {
+  if (!/[",\n\r]/.test(value)) {
+    return value;
+  }
+
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function printHelp(options: {
   readonly executable: string;
   readonly globalOptions?: readonly string[];
