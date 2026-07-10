@@ -93,44 +93,42 @@
     ```
 - [ ] Phase 7.3: `noc-client` Roster convenience APIs and CLI
   - Status: planned, model review required before implementation.
-  - Context: Expose roster APIs only by employee number or current user. Do not
-    expose public `hrId` inputs or outputs. Use `samples/sample.getRoster.json`
-    and `samples/sample.getRosterMonthlyAccumulatedValues.json` for model
-    review and mapping tests.
+  - Context: Expose public roster client APIs by employee number. The CLI may
+    offer current-user convenience, but it must translate that to an
+    `employeeNum` before calling client roster APIs. Do not expose public `hrId`
+    inputs or outputs. Use `samples/sample.getRoster.json` and
+    `samples/sample.getRosterMonthlyAccumulatedValues.json` for model review and
+    mapping tests. Local and live sampling found roster detail labels including
+    `Activity`, `Station`, `Departure`, `Arrival`, `CheckIn`, `Start`, `End`,
+    `CheckOut`, `Aircraft Reg`, `Version`, `Type`, `Crew On Board`,
+    `Roster Legal Exception`, `Hotel`, `ReservationNo`, `Comment`,
+    `Pickup To Hotel`, `Pickup From Hotel`, `General Note`,
+    `Roster Designators`, and `Others who have the same activity`; live sampling
+    with `.env` credentials covered May, June, and July 2026 without printing
+    credentials or roster values.
   - Proposed model:
     ```ts
-    export type NocRosterTarget =
-      | { readonly currentUser: true }
-      | { readonly employeeNum: string };
-
     export interface NocRosterOptions {
       readonly month: number;
       readonly year: number;
-      readonly target: NocRosterTarget;
+      readonly employeeNum: string;
     }
 
     export interface NocRosterResult {
-      readonly username?: string;
+      readonly employeeNum: string;
       readonly date: string;
-      readonly target: NocRosterResolvedTarget;
-      readonly days: readonly NocRosterDay[];
-      readonly notes: readonly unknown[];
-    }
-
-    export interface NocRosterResolvedTarget {
-      readonly kind: "currentUser" | "employeeNum";
-      readonly employeeNum?: string;
       readonly crew?: NocCrew;
+      readonly days: readonly NocRosterDay[];
+      readonly rosterNotes: readonly unknown[];
     }
 
     export interface NocRosterDay {
       readonly date: string;
       readonly dayNumber: number;
       readonly color?: string;
-      readonly isCurrentDay: boolean;
-      readonly departure?: NocRosterDayInfo;
-      readonly arrival?: NocRosterDayInfo;
-      readonly hotel?: NocRosterDayInfo;
+      readonly departureInfo?: NocRosterDayInfo;
+      readonly arrivalInfo?: NocRosterDayInfo;
+      readonly hotelInfo?: NocRosterDayInfo;
       readonly activities: readonly NocRosterActivity[];
       readonly notes: readonly unknown[];
     }
@@ -153,24 +151,54 @@
       readonly ata?: string;
       readonly checkOut?: string;
       readonly info?: string;
-      readonly state?: string;
-      readonly validFrom?: string;
-      readonly validFromUtc?: string;
-      readonly validTo?: string;
-      readonly validToUtc?: string;
-      readonly details: readonly NocRosterActivityDetail[];
+      readonly details: NocRosterActivityDetail;
     }
 
     export interface NocRosterActivityDetail {
-      readonly id?: string;
-      readonly label: string;
-      readonly value: unknown;
-      readonly color?: string;
-      readonly values: readonly unknown[];
+      readonly activity?: string;
+      readonly station?: NocRosterDetailValue;
+      readonly departure?: NocRosterDetailValue;
+      readonly arrival?: NocRosterDetailValue;
+      readonly checkIn?: string;
+      readonly start?: string;
+      readonly end?: string;
+      readonly checkOut?: string;
+      readonly aircraftReg?: string;
+      readonly version?: string;
+      readonly type?: string;
+      readonly crewOnBoard?: readonly NocRosterCrewOnBoard[];
+      readonly rosterLegalException?: string;
+      readonly hotel?: string;
+      readonly reservationNo?: string;
+      readonly comment?: string;
+      readonly pickupToHotel?: string;
+      readonly pickupFromHotel?: string;
+      readonly generalNote?: string;
+      readonly rosterDesignators?: string;
+      readonly othersWhoHaveTheSameActivity?: string;
+      readonly [label: string]: unknown;
+    }
+
+    export interface NocRosterCrewOnBoard {
+      readonly employeeNum: string;
+      readonly position: string;
+      readonly firstName: string;
+      readonly lastName: string;
+      readonly email?: string;
+      readonly designators: readonly string[];
+    }
+
+    export interface NocRosterDetailValue {
+      readonly Id?: string;
+      readonly Label?: string | null;
+      readonly Value?: string;
+      readonly Color?: string | null;
+      readonly Values?: readonly unknown[];
     }
 
     export interface NocRosterMonthlyValuesResult {
-      readonly target: NocRosterResolvedTarget;
+      readonly employeeNum: string;
+      readonly crew?: NocCrew;
       readonly values: readonly NocRosterMonthlyValue[];
     }
 
@@ -180,14 +208,26 @@
     }
     ```
   - Expected behavior: `getRoster()` and `getRosterMonthlyValues()` resolve
-    current user or employee number internally, then call `NocBrowser` with a
-    private `hrId`; keep the existing `noc-browser` CLI `--employee-num`
-    convenience intact.
+    employee number internally, then call `NocBrowser` with a private `hrId`.
+    `NocClient` should maintain an internal in-memory `Map<string, number>` for
+    employee-number to private-`hrId` resolution; populate it from
+    HumanResources rows when available, use it before making mapping requests,
+    and fetch HumanResources only when the requested employee number is missing
+    from the map. Map roster activity detail arrays into an object keyed by a
+    camelCase normalized version of each detail `Label`, using the raw detail
+    `Value` as the field value except `Crew On Board`, which should be parsed
+    into crew entries with employee number, position, first name, last name,
+    email, and parenthesized designators; keep the existing `noc-browser` CLI
+    `--employee-num` convenience intact.
   - CLI behavior: add `noc-client roster --month --year --employee-num`,
-    `noc-client roster --month --year --current-user`, and
-    `noc-client roster-monthly-values --month --year --employee-num|--current-user`;
-    authenticate first using the same credential and base-url inputs as `auth`;
-    print the accepted `noc-client` result model as JSON.
+    `noc-client roster --month --year --current-user`,
+    `noc-client roster-monthly-values --month --year --employee-num`, and
+    `noc-client roster-monthly-values --month --year --current-user`; use the
+    saved `noc-client auth` session and the existing session re-authentication
+    behavior; for `--current-user`, the CLI should call `getCurrentCrew()` to
+    read the current user's `employeeNum`, then call `getRoster()` or
+    `getRosterMonthlyValues()` with that employee number; print the accepted
+    `noc-client` result model as JSON.
   - Verification: `npm run format`, `npm run build`, roster mapping/unit tests
     from existing samples, and roster CLI smoke/unit tests.
   - Commit message:
@@ -387,6 +427,129 @@
   - Commit message:
     ```text
     Add Station Ops model APIs and CLI
+    ```
+- [ ] Phase 8.1: Enriched domain service foundation
+  - Status: planned, name review required before implementation.
+  - Context: Add a post-Phase-7 domain-service package. The final package and
+    service name is intentionally deferred; use a neutral working label until
+    naming is chosen. This layer is library code first and should be imported by
+    future CLI, cron/worker, and Next.js API entrypoints. It owns
+    product-specific enrichment, persistence/cache policy, and query-oriented
+    outputs. `@scope/noc-client` remains the interpreted NOC client and must not
+    own Firebase, cron orchestration, enriched profile reads, FlightAware or
+    internal-system merges, or AI-specific query behavior.
+  - Proposed model:
+    ```ts
+    export interface CrewProfile {
+      readonly employeeNum: string;
+      readonly firstName?: string;
+      readonly lastName?: string;
+      readonly base?: string;
+      readonly position?: string;
+      readonly aircraftTypes: readonly string[];
+      readonly sources: readonly CrewProfileSource[];
+      readonly updatedAt: string;
+    }
+
+    export interface CrewProfileSource {
+      readonly system: "noc";
+      readonly observedAt: string;
+      readonly activityId?: number;
+      readonly rosterDate?: string;
+    }
+
+    export interface CrewProfileStore {
+      get(employeeNum: string): Promise<CrewProfile | undefined>;
+      getMany(employeeNums: readonly string[]): Promise<ReadonlyMap<string, CrewProfile>>;
+      upsert(profile: CrewProfile): Promise<void>;
+    }
+    ```
+  - Expected behavior: create the package boundary, domain-service construction
+    pattern, crew profile contracts, store abstraction, and in-memory/fake store
+    support for tests. Do not add a Firebase SDK dependency in this phase.
+  - Verification: `npm run format`, `npm run build`, and focused unit tests for
+    store and service construction behavior.
+  - Commit message:
+    ```text
+    Add enriched domain service foundation
+    ```
+- [ ] Phase 8.2: Crew profile inference workflow
+  - Status: planned, model review required before implementation.
+  - Context: Infer crew profile fields that are not reliably available from
+    NOC `GetHumanResources`: base, operational position, aircraft type, and
+    split first/last names. The workflow should consume `@scope/noc-client`
+    roster and crew-on-board APIs once Phase 7 provides stable interpreted
+    models.
+  - Expected behavior: add a `CrewProfileSyncService` that can iterate selected
+    crew members, read their rosters, select a suitable recent activity, fetch
+    crew-on-board details, extract the target member's profile fields, record
+    provenance, and persist through `CrewProfileStore`. Missing or ambiguous
+    data should remain explicit instead of fabricating values.
+  - Verification: `npm run format`, `npm run build`, and inference unit tests
+    using roster and crew-on-board fixtures for success, missing member,
+    missing activity, and ambiguous field scenarios.
+  - Commit message:
+    ```text
+    Add crew profile inference workflow
+    ```
+- [ ] Phase 8.3: Enriched crew directory queries
+  - Status: planned, model review required before implementation.
+  - Context: Provide query-oriented enriched crew data by merging live/current
+    NOC crew identity data from `@scope/noc-client` with stored crew profile
+    data from `CrewProfileStore`.
+  - Expected behavior: add methods such as `findCrew`, `getCrewProfile`, and
+    `getCrewDirectory`; preserve employee-number and name-search behavior from
+    the NOC client where applicable; include profile fields and provenance when
+    available; keep missing profile fields explicit.
+  - Verification: `npm run format`, `npm run build`, and unit tests for merge
+    ordering, missing profiles, stale/provenance fields, and name/employee
+    lookup behavior.
+  - Commit message:
+    ```text
+    Add enriched crew directory queries
+    ```
+- [ ] Phase 8.4: Agent-friendly enriched CLI
+  - Status: planned, CLI contract review required before implementation.
+  - Context: AI agents should use query-oriented enriched commands rather than
+    raw low-level NOC calls. The CLI should import the enriched domain service
+    and print stable JSON suitable for tools and agents.
+  - Expected behavior: add initial enriched crew commands for crew search and
+    crew profile lookup. Commands should use the same domain services as future
+    API routes and workers, include profile provenance in JSON output, and keep
+    raw NOC-only commands separate from enriched operational commands.
+  - Verification: `npm run format`, `npm run build`, CLI unit tests, and JSON
+    shape assertions for agent-facing command output.
+  - Commit message:
+    ```text
+    Add enriched crew CLI commands
+    ```
+- [ ] Later phase: Firebase crew profile store
+  - Status: planned, schema review required before implementation.
+  - Context: Firebase is the likely production persistence layer for inferred
+    crew profile data, but it should remain behind `CrewProfileStore`.
+  - Expected behavior: add a Firebase-backed `CrewProfileStore`, production
+    configuration loading, serialization/deserialization tests, and migration or
+    bootstrap notes for the selected Firebase collection/schema.
+  - Verification: `npm run format`, `npm run build`, focused store unit tests,
+    and any configured Firebase emulator tests.
+  - Commit message:
+    ```text
+    Add Firebase crew profile store
+    ```
+- [ ] Later phase: Next.js API integration
+  - Status: planned, API contract review required before implementation.
+  - Context: A future Next.js backend should expose the same enriched domain
+    service used by CLI and workers. HTTP auth, request validation, rate
+    limiting, and response transport concerns belong in the API layer, not in
+    the domain package.
+  - Expected behavior: add API routes for enriched crew search and profile
+    lookup, using the shared domain service and `CrewProfileStore`; keep route
+    responses aligned with the CLI/domain JSON contracts where practical.
+  - Verification: `npm run format`, `npm run build`, API route tests, and
+    contract tests for response shapes.
+  - Commit message:
+    ```text
+    Add enriched crew API routes
     ```
 - [ ] Future improvement
 

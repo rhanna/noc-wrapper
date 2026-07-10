@@ -193,3 +193,46 @@ Planned sub-phases:
 - Phase 7.5 adds Revision client models by converting dynamic raw sections into ordered section arrays plus revision CLI
   commands.
 - Phase 7.6 adds Station Ops client models with stable departure and arrival arrays plus the Station Ops CLI command.
+
+## Planned Enriched Domain Service
+
+After Phase 7, the repository should add an enriched domain-service layer. The final package and service name is
+intentionally deferred; until then, architecture and task docs should use the neutral "enriched domain service" label.
+
+The enriched domain service is library code first, not a separately running server. It owns product-specific workflows
+that combine `@scope/noc-client` data with persisted profile data and future external systems such as FlightAware and
+internal operational services. Runtime entrypoints such as a cron worker, a JSON-first CLI, and a Next.js API should all
+import this same domain code so they share one set of enrichment, inference, and merge rules.
+
+Boundary rules:
+
+- `@rhanna/noc-browser` remains the raw NOC adapter.
+- `@scope/noc-client` remains the interpreted NOC client and must not own Firebase access, cron orchestration,
+  FlightAware/internal-system merges, enriched profile reads, or AI-specific query behavior.
+- The enriched domain service owns inferred crew profile data, persistence/cache policy, source provenance, and
+  query-oriented outputs for application, CLI, worker, and AI use cases.
+- Persistence should be hidden behind store interfaces. Firebase is the likely production backing store for crew profile
+  data, but the initial domain package should depend on a `CrewProfileStore` abstraction so tests and local tooling can
+  use in-memory or fake stores.
+
+The first domain-service slice is crew profile enrichment. NOC `GetHumanResources` does not reliably expose a crew
+member's base, operational position, aircraft type, or split first/last name. Those fields can be inferred by reading a
+crew member's roster, selecting a suitable recent activity, fetching that activity's crew-on-board details, and extracting
+the target crew member's details from that payload.
+
+The planned crew profile concept includes:
+
+- `employeeNum`
+- `firstName`
+- `lastName`
+- `base`
+- `position`
+- `aircraftTypes`
+- source/provenance timestamps
+- optional confidence/status metadata for inferred fields when needed
+
+Planned runtimes:
+
+- A daily cron or worker uses a `CrewProfileSyncService` to infer and persist crew profile data.
+- A JSON-first enriched CLI imports the domain service and exposes agent-friendly commands over enriched crew data.
+- A future Next.js API imports the same domain service and exposes HTTP routes for user-facing and AI-facing access.
