@@ -16,6 +16,8 @@ const nocClientMock = vi.hoisted(() => ({
   getCrew: vi.fn(),
   getCrewByEmployeeNum: vi.fn(),
   getCurrentCrew: vi.fn(),
+  getRoster: vi.fn(),
+  getRosterMonthlyValues: vi.fn(),
 }));
 
 vi.mock("@scope/noc-client", () => {
@@ -43,6 +45,14 @@ vi.mock("@scope/noc-client", () => {
     findCrewByName(options: unknown): Promise<unknown> {
       return nocClientMock.findCrewByName(options);
     }
+
+    getRoster(options: unknown): Promise<unknown> {
+      return nocClientMock.getRoster(options);
+    }
+
+    getRosterMonthlyValues(options: unknown): Promise<unknown> {
+      return nocClientMock.getRosterMonthlyValues(options);
+    }
   }
 
   return {
@@ -69,6 +79,8 @@ describe("noc-client CLI", () => {
     nocClientMock.getCrew.mockReset();
     nocClientMock.getCrewByEmployeeNum.mockReset();
     nocClientMock.getCurrentCrew.mockReset();
+    nocClientMock.getRoster.mockReset();
+    nocClientMock.getRosterMonthlyValues.mockReset();
     nocClientMock.findCrewByName.mockResolvedValue({ crew: [] });
     nocClientMock.getCrew.mockResolvedValue({ crew: [] });
     nocClientMock.getCrewByEmployeeNum.mockResolvedValue({
@@ -82,6 +94,28 @@ describe("noc-client CLI", () => {
         employeeNum: "11538",
         displayName: "Hanna Robert",
       },
+    });
+    nocClientMock.getRoster.mockResolvedValue({
+      employeeNum: "11538",
+      date: "2026-06-01",
+      days: [
+        {
+          date: "2026-06-01",
+          dayNumber: 1,
+          activities: [],
+          notes: [],
+        },
+      ],
+      rosterNotes: [],
+    });
+    nocClientMock.getRosterMonthlyValues.mockResolvedValue({
+      employeeNum: "11538",
+      values: [
+        {
+          label: "Monthly Duty",
+          value: "84:52",
+        },
+      ],
     });
   });
 
@@ -554,12 +588,174 @@ describe("noc-client CLI", () => {
 
     await runNocClientCli(["logout"]);
 
-    expect(logSpy).toHaveBeenCalledWith(
-      ["loggedOut", "---------", "true"].join("\n"),
-    );
+    expect(logSpy).toHaveBeenCalledWith(["loggedOut", "---------", "true"].join("\n"));
     await expect(runNocClientCli(["current-crew"])).rejects.toThrow(
       "No saved noc-client session found. Run noc-client auth first.",
     );
+  });
+
+  it("roster uses the saved session, calls client by employee number, and prints JSON", async () => {
+    await saveTestSession();
+
+    await runNocClientCli([
+      "roster",
+      "--month",
+      "6",
+      "--year",
+      "2026",
+      "--employee-num",
+      "11538",
+      "--format",
+      "json",
+    ]);
+
+    expect(nocClientMock.authenticate).not.toHaveBeenCalled();
+    expect(nocClientMock.getRoster).toHaveBeenCalledWith({
+      month: 6,
+      year: 2026,
+      employeeNum: "11538",
+    });
+    expect(logSpy).toHaveBeenCalledWith(
+      JSON.stringify(
+        {
+          employeeNum: "11538",
+          date: "2026-06-01",
+          days: [
+            {
+              date: "2026-06-01",
+              dayNumber: 1,
+              activities: [],
+              notes: [],
+            },
+          ],
+          rosterNotes: [],
+        },
+        null,
+        2,
+      ),
+    );
+  });
+
+  it("roster resolves --current-user before calling the employee-number client API", async () => {
+    await saveTestSession();
+
+    await runNocClientCli(["roster", "--month", "7", "--year", "2026", "--current-user"]);
+
+    expect(nocClientMock.getCurrentCrew).toHaveBeenCalledWith();
+    expect(nocClientMock.getRoster).toHaveBeenCalledWith({
+      month: 7,
+      year: 2026,
+      employeeNum: "11538",
+    });
+  });
+
+  it("roster-monthly-values calls client by employee number and prints JSON", async () => {
+    await saveTestSession();
+
+    await runNocClientCli([
+      "roster-monthly-values",
+      "--month",
+      "5",
+      "--year",
+      "2026",
+      "--employee-num",
+      "11538",
+      "--format",
+      "json",
+    ]);
+
+    expect(nocClientMock.getRosterMonthlyValues).toHaveBeenCalledWith({
+      month: 5,
+      year: 2026,
+      employeeNum: "11538",
+    });
+    expect(logSpy).toHaveBeenCalledWith(
+      JSON.stringify(
+        {
+          employeeNum: "11538",
+          values: [
+            {
+              label: "Monthly Duty",
+              value: "84:52",
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+  });
+
+  it("roster-monthly-values resolves --current-user before calling the client API", async () => {
+    await saveTestSession();
+
+    await runNocClientCli([
+      "roster-monthly-values",
+      "--month",
+      "5",
+      "--year",
+      "2026",
+      "--current-user",
+    ]);
+
+    expect(nocClientMock.getCurrentCrew).toHaveBeenCalledWith();
+    expect(nocClientMock.getRosterMonthlyValues).toHaveBeenCalledWith({
+      month: 5,
+      year: 2026,
+      employeeNum: "11538",
+    });
+  });
+
+  it("roster commands reject employee-num and current-user together", async () => {
+    await saveTestSession();
+
+    await expect(
+      runNocClientCli([
+        "roster",
+        "--month",
+        "6",
+        "--year",
+        "2026",
+        "--employee-num",
+        "11538",
+        "--current-user",
+      ]),
+    ).rejects.toThrow("roster target accepts either --employee-num or --current-user, not both");
+
+    expect(nocClientMock.getCurrentCrew).not.toHaveBeenCalled();
+    expect(nocClientMock.getRoster).not.toHaveBeenCalled();
+  });
+
+  it("roster commands reject a missing target", async () => {
+    await saveTestSession();
+
+    await expect(
+      runNocClientCli(["roster-monthly-values", "--month", "6", "--year", "2026"]),
+    ).rejects.toThrow("roster target requires --employee-num or --current-user");
+
+    expect(nocClientMock.getRosterMonthlyValues).not.toHaveBeenCalled();
+  });
+
+  it("roster commands require saved sessions", async () => {
+    await expect(
+      runNocClientCli(["roster", "--month", "6", "--year", "2026", "--employee-num", "11538"]),
+    ).rejects.toThrow("No saved noc-client session found. Run noc-client auth first.");
+
+    expect(nocClientMock.getRoster).not.toHaveBeenCalled();
+  });
+
+  it("roster commands require month and year", async () => {
+    await saveTestSession();
+
+    await expect(
+      runNocClientCli(["roster", "--year", "2026", "--employee-num", "11538"]),
+    ).rejects.toThrow("Missing required option --month");
+    await expect(
+      runNocClientCli(["roster-monthly-values", "--month", "6", "--employee-num", "11538"]),
+    ).rejects.toThrow("Missing required option --year");
+
+    expect(nocClientMock.getRoster).not.toHaveBeenCalled();
+    expect(nocClientMock.getRosterMonthlyValues).not.toHaveBeenCalled();
   });
 });
 

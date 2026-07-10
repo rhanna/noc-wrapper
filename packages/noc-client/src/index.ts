@@ -35,12 +35,113 @@ export interface NocCrewNameSearchOptions {
   readonly name: string;
 }
 
+export interface NocRosterOptions {
+  readonly month: number;
+  readonly year: number;
+  readonly employeeNum: string;
+}
+
+export interface NocRosterResult {
+  readonly employeeNum: string;
+  readonly date: string;
+  readonly crew?: NocCrew;
+  readonly days: readonly NocRosterDay[];
+  readonly rosterNotes: readonly unknown[];
+}
+
+export interface NocRosterDay {
+  readonly date: string;
+  readonly dayNumber: number;
+  readonly color?: string;
+  readonly departureInfo?: NocRosterDayInfo;
+  readonly arrivalInfo?: NocRosterDayInfo;
+  readonly hotelInfo?: NocRosterDayInfo;
+  readonly activities: readonly NocRosterActivity[];
+  readonly notes: readonly unknown[];
+}
+
+export interface NocRosterDayInfo {
+  readonly info?: string;
+  readonly details?: string;
+  readonly color?: string;
+}
+
+export interface NocRosterActivity {
+  readonly id: number;
+  readonly activity: string;
+  readonly checkIn?: string;
+  readonly std?: string;
+  readonly atd?: string;
+  readonly dep?: string;
+  readonly arr?: string;
+  readonly sta?: string;
+  readonly ata?: string;
+  readonly checkOut?: string;
+  readonly info?: string;
+  readonly details: NocRosterActivityDetail;
+}
+
+export interface NocRosterActivityDetail {
+  readonly activity?: string;
+  readonly station?: NocRosterDetailValue;
+  readonly departure?: NocRosterDetailValue;
+  readonly arrival?: NocRosterDetailValue;
+  readonly checkIn?: string;
+  readonly start?: string;
+  readonly end?: string;
+  readonly checkOut?: string;
+  readonly aircraftReg?: string;
+  readonly version?: string;
+  readonly type?: string;
+  readonly crewOnBoard?: readonly NocRosterCrewOnBoard[];
+  readonly rosterLegalException?: string;
+  readonly hotel?: string;
+  readonly reservationNo?: string;
+  readonly comment?: string;
+  readonly pickupToHotel?: string;
+  readonly pickupFromHotel?: string;
+  readonly generalNote?: string;
+  readonly rosterDesignators?: string;
+  readonly othersWhoHaveTheSameActivity?: string;
+  readonly [label: string]: unknown;
+}
+
+export interface NocRosterCrewOnBoard {
+  readonly employeeNum: string;
+  readonly position: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly email?: string;
+  readonly designators: readonly string[];
+}
+
+export interface NocRosterDetailValue {
+  readonly Id?: string;
+  readonly Label?: string | null;
+  readonly Value?: string;
+  readonly Color?: string | null;
+  readonly Values?: readonly unknown[];
+}
+
+export interface NocRosterMonthlyValuesResult {
+  readonly employeeNum: string;
+  readonly crew?: NocCrew;
+  readonly values: readonly NocRosterMonthlyValue[];
+}
+
+export interface NocRosterMonthlyValue {
+  readonly label: string;
+  readonly value: string;
+}
+
 type NocCrewNameSearch =
   | { readonly type: "text"; readonly name: string }
   | { readonly type: "regex"; readonly pattern: RegExp };
 
 export class NocClient {
   readonly #browser: NocBrowser;
+  readonly #hrIdByEmployeeNum = new Map<string, number>();
+  readonly #crewByEmployeeNum = new Map<string, NocCrew>();
 
   constructor(options: NocClientOptions) {
     if (!isObject(options)) {
@@ -116,6 +217,84 @@ export class NocClient {
       .filter((member) => matchesCrewNameSearch(member, search));
 
     return { crew };
+  }
+
+  async getRoster(options: NocRosterOptions): Promise<NocRosterResult> {
+    const rosterOptions = readRosterOptions(options);
+    const resolved = await this.resolveRosterCrew(rosterOptions.employeeNum);
+    const result = await this.#browser.getRoster({
+      month: rosterOptions.month,
+      year: rosterOptions.year,
+      hrId: resolved.hrId,
+    });
+
+    return mapRosterResult(result, rosterOptions.employeeNum, resolved.crew);
+  }
+
+  async getRosterMonthlyValues(options: NocRosterOptions): Promise<NocRosterMonthlyValuesResult> {
+    const rosterOptions = readRosterOptions(options);
+    const resolved = await this.resolveRosterCrew(rosterOptions.employeeNum);
+    const result = await this.#browser.getRosterMonthlyAccumulatedValues({
+      month: rosterOptions.month,
+      year: rosterOptions.year,
+      hrId: resolved.hrId,
+    });
+
+    return mapRosterMonthlyValuesResult(result, rosterOptions.employeeNum, resolved.crew);
+  }
+
+  private async resolveRosterCrew(
+    employeeNum: string,
+  ): Promise<{ readonly hrId: number; readonly crew?: NocCrew }> {
+    const cachedHrId = this.#hrIdByEmployeeNum.get(employeeNum);
+
+    if (cachedHrId !== undefined) {
+      return {
+        hrId: cachedHrId,
+        crew: this.#crewByEmployeeNum.get(employeeNum),
+      };
+    }
+
+    const rows = readHumanResources(await this.#browser.getHumanResources());
+    this.populateHrIdCache(rows);
+    const match = readOnlyResolvedCrewMatch(
+      rows.filter((row) => readEmployeeNum(row) === employeeNum),
+      employeeNum,
+    );
+    const hrId = readPrivateHrId(match, employeeNum);
+    const crew = toNocCrew(match);
+
+    this.#hrIdByEmployeeNum.set(employeeNum, hrId);
+    this.#crewByEmployeeNum.set(employeeNum, crew);
+
+    return { hrId, crew };
+  }
+
+  private populateHrIdCache(rows: readonly NocCrewRaw[]): void {
+    const employeeNumCounts = new Map<string, number>();
+
+    for (const row of rows) {
+      const employeeNum = readEmployeeNum(row);
+
+      if (employeeNum) {
+        employeeNumCounts.set(employeeNum, (employeeNumCounts.get(employeeNum) ?? 0) + 1);
+      }
+    }
+
+    for (const row of rows) {
+      const employeeNum = readEmployeeNum(row);
+
+      if (!employeeNum || employeeNumCounts.get(employeeNum) !== 1) {
+        continue;
+      }
+
+      const hrId = row.Id;
+
+      if (typeof hrId === "number" && Number.isInteger(hrId) && hrId > 0) {
+        this.#hrIdByEmployeeNum.set(employeeNum, hrId);
+        this.#crewByEmployeeNum.set(employeeNum, toNocCrew(row));
+      }
+    }
   }
 }
 
@@ -225,6 +404,26 @@ function normalizeEmployeeNum(value: unknown): string {
   return normalized;
 }
 
+function readRosterOptions(options: NocRosterOptions): NocRosterOptions {
+  if (!isObject(options) || Array.isArray(options)) {
+    throw new Error("roster options are required");
+  }
+
+  if (!Number.isInteger(options.month) || options.month < 1 || options.month > 12) {
+    throw new Error("month must be an integer from 1 to 12");
+  }
+
+  if (!Number.isInteger(options.year) || options.year < 1) {
+    throw new Error("year must be a positive integer");
+  }
+
+  return {
+    month: options.month,
+    year: options.year,
+    employeeNum: normalizeEmployeeNum(options.employeeNum),
+  };
+}
+
 function readNameSearch(value: unknown): NocCrewNameSearch {
   if (typeof value !== "string") {
     throw new Error("name is required");
@@ -325,8 +524,325 @@ function readOnlyCrewMatch(matches: readonly NocCrewRaw[], employeeNum: string):
   return match;
 }
 
+function readOnlyResolvedCrewMatch(
+  matches: readonly NocCrewRaw[],
+  employeeNum: string,
+): NocCrewRaw {
+  const match = readOnlyCrewMatch(matches, employeeNum);
+
+  if (matches.length > 1) {
+    throw new Error(`Multiple crew rows found for employee number: ${employeeNum}`);
+  }
+
+  return match;
+}
+
 function normalizeWhitespace(value: string): string {
   return value.trim().replace(/\s+/g, " ");
+}
+
+function mapRosterResult(value: unknown, employeeNum: string, crew?: NocCrew): NocRosterResult {
+  const root = unwrapWebMethodResult(value);
+  const roster = readObject(root.Roster, "GetRoster response Roster");
+
+  return withOptionalCrew(
+    {
+      employeeNum,
+      date: readDateString(root.Date, "GetRoster response Date"),
+      days: mapRosterDays(roster.Days),
+      rosterNotes: readUnknownArray(roster.RosterNotes),
+    },
+    crew,
+  );
+}
+
+function mapRosterMonthlyValuesResult(
+  value: unknown,
+  employeeNum: string,
+  crew?: NocCrew,
+): NocRosterMonthlyValuesResult {
+  const root = unwrapWebMethodResult(value);
+
+  return withOptionalCrew(
+    {
+      employeeNum,
+      values: readUnknownArray(root.AccumulatedValues).map((item, index) =>
+        mapRosterMonthlyValue(item, index),
+      ),
+    },
+    crew,
+  );
+}
+
+function withOptionalCrew<T extends { readonly employeeNum: string }>(
+  result: T,
+  crew: NocCrew | undefined,
+): T & { readonly crew?: NocCrew } {
+  return crew === undefined ? result : { ...result, crew };
+}
+
+function unwrapWebMethodResult(value: unknown): Record<string, unknown> {
+  const root = readObject(value, "NOC response");
+
+  if ("d" in root) {
+    return readObject(root.d, "NOC response d");
+  }
+
+  return root;
+}
+
+function mapRosterMonthlyValue(value: unknown, index: number): NocRosterMonthlyValue {
+  const item = readObject(value, `AccumulatedValues[${index}]`);
+  const label = readRequiredString(item.Label, `AccumulatedValues[${index}].Label`);
+  const monthlyValue = readRequiredString(item.Value, `AccumulatedValues[${index}].Value`);
+
+  return {
+    label,
+    value: monthlyValue,
+  };
+}
+
+function mapRosterDays(value: unknown): readonly NocRosterDay[] {
+  const days = readObject(value, "Roster.Days");
+
+  return Object.entries(days)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, day]) => mapRosterDay(date, day));
+}
+
+function mapRosterDay(date: string, value: unknown): NocRosterDay {
+  const day = readObject(value, `Roster.Days.${date}`);
+  const header = readObject(day.Header, `Roster.Days.${date}.Header`);
+  const details = readOptionalObject(day.Details);
+
+  return {
+    date: normalizeRosterDate(date),
+    dayNumber: readRequiredNumber(header.DayNumber, `Roster.Days.${date}.Header.DayNumber`),
+    ...optionalStringProperty("color", readOptionalStringValue(header.Color ?? header.DayColor)),
+    ...optionalDayInfoProperty("departureInfo", header.DepInfo),
+    ...optionalDayInfoProperty("arrivalInfo", header.ArrInfo),
+    ...optionalDayInfoProperty("hotelInfo", header.HotelInfo),
+    activities: readUnknownArray(details?.ActivityDetails).map((activity, index) =>
+      mapRosterActivity(activity, `${date}.ActivityDetails[${index}]`),
+    ),
+    notes: readUnknownArray(day.Notes),
+  };
+}
+
+function mapRosterActivity(value: unknown, path: string): NocRosterActivity {
+  const activity = readObject(value, path);
+
+  return {
+    id: readRequiredNumber(activity.Id, `${path}.Id`),
+    activity: readRequiredString(activity.Activity, `${path}.Activity`),
+    ...optionalStringProperty("checkIn", readOptionalStringValue(activity.CheckIn)),
+    ...optionalStringProperty("std", readOptionalStringValue(activity.STD)),
+    ...optionalStringProperty("atd", readOptionalStringValue(activity.ATD)),
+    ...optionalStringProperty("dep", readOptionalStringValue(activity.Dep)),
+    ...optionalStringProperty("arr", readOptionalStringValue(activity.Arr)),
+    ...optionalStringProperty("sta", readOptionalStringValue(activity.STA)),
+    ...optionalStringProperty("ata", readOptionalStringValue(activity.ATA)),
+    ...optionalStringProperty("checkOut", readOptionalStringValue(activity.CheckOut)),
+    ...optionalStringProperty("info", readOptionalStringValue(activity.Info)),
+    details: mapRosterActivityDetails(activity.Details),
+  };
+}
+
+function mapRosterActivityDetails(value: unknown): NocRosterActivityDetail {
+  const result: Record<string, unknown> = {};
+
+  for (const [index, rawDetail] of readUnknownArray(value).entries()) {
+    const detail = readObject(rawDetail, `Activity.Details[${index}]`);
+    const label = readRequiredString(detail.Label, `Activity.Details[${index}].Label`);
+    const key = rosterDetailKey(label);
+
+    result[key] =
+      key === "crewOnBoard"
+        ? parseCrewOnBoard(readOptionalStringValue(detail.Value) ?? "")
+        : detail.Value;
+  }
+
+  return result as NocRosterActivityDetail;
+}
+
+function optionalDayInfoProperty(
+  key: "departureInfo" | "arrivalInfo" | "hotelInfo",
+  value: unknown,
+): Partial<Pick<NocRosterDay, typeof key>> {
+  const info = mapRosterDayInfo(value);
+  return info === undefined ? {} : { [key]: info };
+}
+
+function mapRosterDayInfo(value: unknown): NocRosterDayInfo | undefined {
+  const info = readOptionalObject(value);
+
+  if (!info) {
+    return undefined;
+  }
+
+  const mapped = {
+    ...optionalStringProperty("info", readOptionalStringValue(info.Info)),
+    ...optionalStringProperty("details", readOptionalStringValue(info.Details)),
+    ...optionalStringProperty("color", readOptionalStringValue(info.Color)),
+  };
+
+  return Object.keys(mapped).length === 0 ? undefined : mapped;
+}
+
+function rosterDetailKey(label: string): string {
+  const known: Record<string, string> = {
+    "Aircraft Reg": "aircraftReg",
+    CheckIn: "checkIn",
+    CheckOut: "checkOut",
+    "Crew On Board": "crewOnBoard",
+    "General Note": "generalNote",
+    "Others Who Have The Same Activity": "othersWhoHaveTheSameActivity",
+    "Others Who Have the Same Activity": "othersWhoHaveTheSameActivity",
+    "Pickup From Hotel": "pickupFromHotel",
+    "Pickup To Hotel": "pickupToHotel",
+    ReservationNo: "reservationNo",
+    "Roster Designators": "rosterDesignators",
+    "Roster Legal Exception": "rosterLegalException",
+  };
+
+  return known[label] ?? labelToCamelCase(label);
+}
+
+function labelToCamelCase(label: string): string {
+  const words = label.match(/[A-Za-z0-9]+/g) ?? [];
+
+  if (words.length === 0) {
+    return label;
+  }
+
+  const [first, ...rest] = words;
+
+  if (!first) {
+    return label;
+  }
+
+  return [
+    first.toLocaleLowerCase(),
+    ...rest.map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1)),
+  ].join("");
+}
+
+function parseCrewOnBoard(value: string): readonly NocRosterCrewOnBoard[] {
+  return value
+    .split(/<br\s*\/?>/i)
+    .map((entry) => parseCrewOnBoardEntry(entry))
+    .filter((entry): entry is NocRosterCrewOnBoard => entry !== undefined);
+}
+
+function parseCrewOnBoardEntry(value: string): NocRosterCrewOnBoard | undefined {
+  const email = /mailto:([^"'>\s]+)/i.exec(value)?.[1];
+  const text = decodeHtmlEntities(stripHtml(value)).trim();
+
+  if (text.length === 0) {
+    return undefined;
+  }
+
+  const match =
+    /^([A-Z0-9]+)\s+-\s+(\d+)\s+(.+?)(?:\s+([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}))?$/.exec(
+      text,
+    );
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [, position, employeeNum, rawName, textEmail] = match;
+
+  if (!position || !employeeNum || !rawName) {
+    return undefined;
+  }
+
+  const designatorMatches = [...rawName.matchAll(/\(([^)]+)\)/g)];
+  const designators = designatorMatches.flatMap((designator) =>
+    (designator[1] ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+  const name = normalizeWhitespace(rawName.replace(/\s*\([^)]+\)/g, ""));
+  const commaIndex = name.indexOf(",");
+  const lastName = commaIndex >= 0 ? normalizeWhitespace(name.slice(0, commaIndex)) : "";
+  const firstName =
+    commaIndex >= 0 ? normalizeWhitespace(name.slice(commaIndex + 1)) : normalizeWhitespace(name);
+
+  return {
+    employeeNum,
+    position,
+    firstName,
+    lastName,
+    ...(email || textEmail ? { email: email ?? textEmail } : {}),
+    designators,
+  };
+}
+
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, " ");
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function normalizeRosterDate(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
+}
+
+function readDateString(value: unknown, path: string): string {
+  return normalizeRosterDate(readRequiredString(value, path));
+}
+
+function readRequiredString(value: unknown, path: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${path} must be a string`);
+  }
+
+  return value;
+}
+
+function readOptionalStringValue(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readRequiredNumber(value: unknown, path: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${path} must be a number`);
+  }
+
+  return value;
+}
+
+function readObject(value: unknown, path: string): Record<string, unknown> {
+  if (!isObject(value) || Array.isArray(value)) {
+    throw new Error(`${path} must be an object`);
+  }
+
+  return value;
+}
+
+function readOptionalObject(value: unknown): Record<string, unknown> | undefined {
+  return isObject(value) && !Array.isArray(value) ? value : undefined;
+}
+
+function readUnknownArray(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function optionalStringProperty<K extends string>(
+  key: K,
+  value: string | undefined,
+): Partial<Record<K, string>> {
+  return value === undefined ? {} : ({ [key]: value } as Partial<Record<K, string>>);
 }
 
 export default NocClient;

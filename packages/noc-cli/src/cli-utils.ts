@@ -164,9 +164,7 @@ export function formatCsv(value: unknown): string {
     return "";
   }
 
-  return [table.columns, ...table.rows]
-    .map((row) => row.map(formatCsvCell).join(","))
-    .join("\n");
+  return [table.columns, ...table.rows].map((row) => row.map(formatCsvCell).join(",")).join("\n");
 }
 
 export function formatTable(value: unknown): string {
@@ -181,7 +179,10 @@ export function formatTable(value: unknown): string {
     Math.max(...rows.map((row) => row[columnIndex]?.length ?? 0)),
   );
   const renderRow = (row: readonly string[]) =>
-    row.map((cell, index) => cell.padEnd(widths[index] ?? 0)).join("  ").trimEnd();
+    row
+      .map((cell, index) => cell.padEnd(widths[index] ?? 0))
+      .join("  ")
+      .trimEnd();
   const separator = widths.map((width) => "-".repeat(width)).join("  ");
 
   return [renderRow(table.columns), separator, ...table.rows.map(renderRow)].join("\n");

@@ -80,6 +80,24 @@ const commands: Record<string, CommandSpec> = {
     requiresAuth: true,
     run: async ({ client }) => client.getCurrentCrew(),
   },
+  roster: {
+    description:
+      "Print interpreted roster JSON. Requires --month <n>, --year <yyyy>, and --employee-num <num> or --current-user.",
+    requiresAuth: true,
+    run: async ({ client, flags }) => {
+      const { month, year, employeeNum } = await readRosterCommandOptions(client, flags);
+      return client.getRoster({ month, year, employeeNum });
+    },
+  },
+  "roster-monthly-values": {
+    description:
+      "Print interpreted roster monthly values JSON. Requires --month <n>, --year <yyyy>, and --employee-num <num> or --current-user.",
+    requiresAuth: true,
+    run: async ({ client, flags }) => {
+      const { month, year, employeeNum } = await readRosterCommandOptions(client, flags);
+      return client.getRosterMonthlyValues({ month, year, employeeNum });
+    },
+  },
   logout: {
     description: "Delete the saved client session.",
     requiresAuth: false,
@@ -176,6 +194,40 @@ function sortCrewListResult(result: NocCrewListResult, sort: CrewSortKey): NocCr
   return {
     crew: [...result.crew].sort((left, right) => compareCrew(left, right, sort)),
   };
+}
+
+async function readRosterCommandOptions(
+  client: NocClient,
+  flags: Readonly<Record<string, string | boolean>>,
+): Promise<{ readonly month: number; readonly year: number; readonly employeeNum: string }> {
+  const month = requireInteger(flags, "month");
+  const year = requireInteger(flags, "year");
+  const employeeNum = await readRosterEmployeeNum(client, flags);
+
+  return { month, year, employeeNum };
+}
+
+async function readRosterEmployeeNum(
+  client: NocClient,
+  flags: Readonly<Record<string, string | boolean>>,
+): Promise<string> {
+  const hasEmployeeNum = flags["employee-num"] !== undefined;
+  const hasCurrentUser = flags["current-user"] !== undefined;
+
+  if (hasEmployeeNum && hasCurrentUser) {
+    throw new Error("roster target accepts either --employee-num or --current-user, not both");
+  }
+
+  if (hasEmployeeNum) {
+    return requireString(flags, "employee-num");
+  }
+
+  if (hasCurrentUser) {
+    const result = await client.getCurrentCrew();
+    return result.crew.employeeNum;
+  }
+
+  throw new Error("roster target requires --employee-num or --current-user");
 }
 
 function compareCrew(left: NocCrew, right: NocCrew, sort: CrewSortKey): number {

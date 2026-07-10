@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm --workspaces --if-present run build",
+    "build": "npm --workspace @rhanna/noc-browser run build && npm --workspace @scope/noc-client run build && npm --workspace @scope/noc-cli run build",
     "format": "prettier --write .",
     "test": "npm run test:unit",
     "test:unit": "npm --workspaces --if-present run test:unit",

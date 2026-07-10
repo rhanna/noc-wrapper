@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { NocBrowser, NocBrowserOptions } from "@rhanna/noc-browser";
 import { NocClient } from "../../src/index.js";
@@ -388,6 +389,209 @@ describe("NocClient", () => {
 
     await expect(client.getCrew()).rejects.toBe(error);
   });
+
+  it("maps roster sample payloads without exposing private roster fields", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [{ Id: 9227, DisplayName: "11538 Hanna Robert" }],
+    });
+    vi.mocked(browser.getRoster).mockResolvedValue(readRosterSample("sample.getRoster.json"));
+    const client = new NocClient({ browser });
+
+    const result = await client.getRoster({
+      month: 4,
+      year: 2026,
+      employeeNum: "11538",
+    });
+
+    expect(browser.getRoster).toHaveBeenCalledWith({ month: 4, year: 2026, hrId: 9227 });
+    expect(result.employeeNum).toBe("11538");
+    expect(result.date).toBe("2026-04-01");
+    expect(result.crew).toEqual({
+      employeeNum: "11538",
+      displayName: "Hanna Robert",
+    });
+    expect(result.rosterNotes).toHaveLength(1);
+    expect(result.days).toHaveLength(30);
+    expect(result.days[0]).toMatchObject({
+      date: "2026-04-01",
+      dayNumber: 1,
+      color: "#9E2335",
+      departureInfo: {
+        info: "YTZ",
+        details: "",
+        color: "158,35,53",
+      },
+      arrivalInfo: {
+        info: "YTZ",
+        details: "2359",
+        color: "158,35,53",
+      },
+    });
+    expect(result.days[0]).not.toHaveProperty("hotelInfo");
+    expect(result.days[0]?.activities[0]).toEqual({
+      id: 5576810,
+      activity: "GD",
+      std: "0001",
+      dep: "YTZ",
+      arr: "YTZ",
+      sta: "2359",
+      checkOut: "",
+      info: "",
+      details: {
+        activity: "GD,Guaranteed Day off",
+        station: {
+          Id: "11069",
+          Label: null,
+          Value: "YTZ - CYTZ - TORONTO ISLAND APT",
+          Color: null,
+          Values: [],
+        },
+        start: "01APR26 00:01 (LT)",
+        end: "01APR26 23:59 (LT)",
+      },
+    });
+    expect(result.days[0]?.activities[0]).not.toHaveProperty("State");
+    expect(result.days[0]?.activities[0]).not.toHaveProperty("ValidFrom");
+
+    const hotelActivity = result.days
+      .flatMap((day) => day.activities)
+      .find((activity) => activity.details.hotel);
+
+    expect(hotelActivity?.details).toMatchObject({
+      hotel: "YOW - DoubleTree by Hilton Ottawa Downtown ",
+      reservationNo: "",
+      comment: "",
+      pickupToHotel: "03APR26 02:09 (LT) Hotel Shuttle (20 min.)",
+      pickupFromHotel: "03APR26 15:35 (LT) Hotel Shuttle (20 min.)",
+    });
+    expect(hotelActivity?.details.crewOnBoard?.[0]).toEqual({
+      employeeNum: "11538",
+      position: "CA",
+      firstName: "Robert",
+      lastName: "Hanna",
+      email: "robert.hanna@flyporter.com",
+      designators: [],
+    });
+  });
+
+  it("maps monthly accumulated roster values from the sample payload", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [{ Id: 9227, DisplayName: "11538 Hanna Robert" }],
+    });
+    vi.mocked(browser.getRosterMonthlyAccumulatedValues).mockResolvedValue(
+      readMonthlyValuesSample("sample.getRosterMonthlyAccumulatedValues.json"),
+    );
+    const client = new NocClient({ browser });
+
+    await expect(
+      client.getRosterMonthlyValues({ month: 5, year: 2026, employeeNum: "11538" }),
+    ).resolves.toEqual({
+      employeeNum: "11538",
+      crew: {
+        employeeNum: "11538",
+        displayName: "Hanna Robert",
+      },
+      values: [
+        {
+          label: "Credits (Bid Period)",
+          value: "01MAY26-31MAY26: 72:33",
+        },
+        {
+          label: "Monthly Duty",
+          value: "84:52",
+        },
+      ],
+    });
+    expect(browser.getRosterMonthlyAccumulatedValues).toHaveBeenCalledWith({
+      month: 5,
+      year: 2026,
+      hrId: 9227,
+    });
+  });
+
+  it("caches employeeNum to private hrId per client instance", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        { Id: 111, DisplayName: "11111 First Crew" },
+        { Id: 222, DisplayName: "22222 Second Crew" },
+      ],
+    });
+    vi.mocked(browser.getRoster).mockResolvedValue(minimalRosterPayload());
+    vi.mocked(browser.getRosterMonthlyAccumulatedValues).mockResolvedValue({
+      AccumulatedValues: [],
+    });
+    const client = new NocClient({ browser });
+
+    await client.getRoster({ month: 6, year: 2026, employeeNum: "11111" });
+    await client.getRosterMonthlyValues({ month: 7, year: 2026, employeeNum: "11111" });
+
+    expect(browser.getHumanResources).toHaveBeenCalledTimes(1);
+    expect(browser.getRoster).toHaveBeenCalledWith({ month: 6, year: 2026, hrId: 111 });
+    expect(browser.getRosterMonthlyAccumulatedValues).toHaveBeenCalledWith({
+      month: 7,
+      year: 2026,
+      hrId: 111,
+    });
+  });
+
+  it("rejects invalid roster options", async () => {
+    const client = new NocClient({ browser: createBrowserMock() });
+
+    await expect(client.getRoster({ month: 0, year: 2026, employeeNum: "11538" })).rejects.toThrow(
+      "month must be an integer from 1 to 12",
+    );
+    await expect(
+      client.getRosterMonthlyValues({ month: 6, year: 0, employeeNum: "11538" }),
+    ).rejects.toThrow("year must be a positive integer");
+    await expect(client.getRoster({ month: 6, year: 2026, employeeNum: "11A38" })).rejects.toThrow(
+      "employeeNum must contain only digits",
+    );
+  });
+
+  it("rejects roster requests with no employee number match", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [{ Id: 1, DisplayName: "11111 First Match" }],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getRoster({ month: 6, year: 2026, employeeNum: "99999" })).rejects.toThrow(
+      "No crew row found for employee number: 99999",
+    );
+    expect(browser.getRoster).not.toHaveBeenCalled();
+  });
+
+  it("rejects roster requests with duplicate employee number matches", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [
+        { Id: 1, DisplayName: "11111 First Match" },
+        { Id: 2, DisplayName: "11111 Duplicate Match" },
+      ],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(
+      client.getRosterMonthlyValues({ month: 6, year: 2026, employeeNum: "11111" }),
+    ).rejects.toThrow("Multiple crew rows found for employee number: 11111");
+    expect(browser.getRosterMonthlyAccumulatedValues).not.toHaveBeenCalled();
+  });
+
+  it("rejects roster requests when the private Id is invalid", async () => {
+    const browser = createBrowserMock();
+    vi.mocked(browser.getHumanResources).mockResolvedValue({
+      HumanResources: [{ Id: "9227", DisplayName: "11538 Hanna Robert" }],
+    });
+    const client = new NocClient({ browser });
+
+    await expect(client.getRoster({ month: 6, year: 2026, employeeNum: "11538" })).rejects.toThrow(
+      "Crew row for employee number 11538 has no valid private Id",
+    );
+    expect(browser.getRoster).not.toHaveBeenCalled();
+  });
 });
 
 function createBrowserMock(
@@ -406,6 +610,8 @@ function createBrowserMock(
     authenticate,
     getCurrentUserInfo: vi.fn(),
     getHumanResources: vi.fn(),
+    getRoster: vi.fn(),
+    getRosterMonthlyAccumulatedValues: vi.fn(),
   } as unknown as NocBrowser;
 }
 
@@ -446,4 +652,30 @@ function loginPageHtml(postAction: string): string {
     </form>
   </body>
 </html>`;
+}
+
+function readSampleJson(name: string): unknown {
+  return JSON.parse(readFileSync(new URL(`../../../../samples/${name}`, import.meta.url), "utf8"));
+}
+
+function readRosterSample(name: string): Awaited<ReturnType<NocBrowser["getRoster"]>> {
+  return readSampleJson(name) as Awaited<ReturnType<NocBrowser["getRoster"]>>;
+}
+
+function readMonthlyValuesSample(
+  name: string,
+): Awaited<ReturnType<NocBrowser["getRosterMonthlyAccumulatedValues"]>> {
+  return readSampleJson(name) as Awaited<
+    ReturnType<NocBrowser["getRosterMonthlyAccumulatedValues"]>
+  >;
+}
+
+function minimalRosterPayload(): Awaited<ReturnType<NocBrowser["getRoster"]>> {
+  return {
+    Date: "2026-06-01T00:00:00Z",
+    Roster: {
+      Days: {},
+      RosterNotes: [],
+    },
+  };
 }
