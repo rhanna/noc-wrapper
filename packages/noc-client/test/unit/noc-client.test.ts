@@ -1,9 +1,16 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { NocBrowser, NocBrowserOptions } from "@rhanna/noc-browser";
-import { NocClient } from "../../src/index.js";
+import { htmlToPlainText, NocClient } from "../../src/index.js";
 
 describe("NocClient", () => {
+  it("converts HTML fragments to plain text", () => {
+    expect(
+      htmlToPlainText('T,LP <span style="background-color: rgb(255,255,0);">&nbsp;&nbsp;</span>'),
+    ).toBe("T,LP");
+    expect(htmlToPlainText("<strong>A&amp;B</strong> &lt;test&gt;")).toBe("A&B <test>");
+  });
+
   it("accepts an injected NocBrowser", async () => {
     const authenticate = vi.fn().mockResolvedValue({
       authenticated: true,

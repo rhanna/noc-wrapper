@@ -57,6 +57,17 @@ vi.mock("@scope/noc-client", () => {
 
   return {
     default: MockNocClient,
+    htmlToPlainText: (value: string) =>
+      value
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\s+/g, " ")
+        .trim(),
     NocClient: MockNocClient,
   };
 });
@@ -509,6 +520,7 @@ describe("noc-client CLI", () => {
     expect(help).toContain("--name text|/regex/flags");
     expect(help).toContain("--sort employee-num|name");
     expect(help).toContain("--format <json|table|csv>");
+    expect(help).toContain("--show-crew");
   });
 
   it("rejects unknown commands", async () => {
@@ -634,6 +646,82 @@ describe("noc-client CLI", () => {
         2,
       ),
     );
+  });
+
+  it("roster prints table output grouped by activity date", async () => {
+    await saveTestSession();
+    nocClientMock.getRoster.mockResolvedValue(rosterWithActivities());
+
+    await runNocClientCli(["roster", "--month", "6", "--year", "2026", "--employee-num", "11538"]);
+
+    const output = String(logSpy.mock.calls[0]?.[0]);
+    expect(output).toContain("Date        Activity");
+    expect(output.match(/^Date\s+Activity/gm)).toHaveLength(1);
+    expect(output).toContain(
+      "2026-06-01  PD123     YTZ  YOW  0700  0800/0805  0900/0858  0920  Gate A",
+    );
+    expect(output).toContain(
+      "2026-06-01  GD        YOW  YOW        0001       2359             GD,Guaranteed Day off",
+    );
+    expect(output).toContain("2026-06-01  DH        YOW  YTZ        1300       1400             T,LP");
+    expect(output).toMatch(/\n\n2026-06-03\s+SBY\s+YOW\s+1000\s+1800\s+Standby/);
+    expect(output).not.toContain("2026-06-02");
+  });
+
+  it("roster table output does not print raw nested JSON blobs", async () => {
+    await saveTestSession();
+    nocClientMock.getRoster.mockResolvedValue(rosterWithActivities());
+
+    await runNocClientCli(["roster", "--month", "6", "--year", "2026", "--employee-num", "11538"]);
+
+    const output = String(logSpy.mock.calls[0]?.[0]);
+    expect(output).not.toContain('"details"');
+    expect(output).not.toContain('"crewOnBoard"');
+    expect(output).not.toContain("<span");
+    expect(output).not.toContain("&nbsp;");
+    expect(output).not.toContain("[object Object]");
+  });
+
+  it("roster --show-crew adds parsed crew lines to table output", async () => {
+    await saveTestSession();
+    nocClientMock.getRoster.mockResolvedValue(rosterWithActivities());
+
+    await runNocClientCli([
+      "roster",
+      "--month",
+      "6",
+      "--year",
+      "2026",
+      "--employee-num",
+      "11538",
+      "--show-crew",
+    ]);
+
+    const output = String(logSpy.mock.calls[0]?.[0]);
+    expect(output).toContain("  CA 11538 Robert Hanna");
+    expect(output).toContain("  FO 22222 Jane Doe (TRAINING, RSV)");
+    expect(output).not.toContain("crewOnBoard");
+  });
+
+  it("roster JSON output remains the full result shape when --show-crew is supplied", async () => {
+    await saveTestSession();
+    const roster = rosterWithActivities();
+    nocClientMock.getRoster.mockResolvedValue(roster);
+
+    await runNocClientCli([
+      "roster",
+      "--month",
+      "6",
+      "--year",
+      "2026",
+      "--employee-num",
+      "11538",
+      "--show-crew",
+      "--format",
+      "json",
+    ]);
+
+    expect(logSpy).toHaveBeenCalledWith(JSON.stringify(roster, null, 2));
   });
 
   it("roster resolves --current-crew before calling the employee-number client API", async () => {
@@ -767,4 +855,107 @@ function authenticationError(message: string): Error {
   const error = new Error(message);
   error.name = "NocAuthenticationError";
   return error;
+}
+
+function rosterWithActivities(): unknown {
+  return {
+    employeeNum: "11538",
+    date: "2026-06-01",
+    days: [
+      {
+        date: "2026-06-01",
+        dayNumber: 1,
+        activities: [
+          {
+            id: 1,
+            activity: "PD123",
+            checkIn: "0700",
+            std: "0800",
+            atd: "0805",
+            dep: "YTZ",
+            arr: "YOW",
+            sta: "0900",
+            ata: "0858",
+            checkOut: "0920",
+            info: "Gate A",
+            details: {
+              activity: "PD123",
+              crewOnBoard: [
+                {
+                  employeeNum: "11538",
+                  position: "CA",
+                  firstName: "Robert",
+                  lastName: "Hanna",
+                  designators: [],
+                },
+                {
+                  employeeNum: "22222",
+                  position: "FO",
+                  firstName: "Jane",
+                  lastName: "Doe",
+                  designators: ["TRAINING", "RSV"],
+                },
+              ],
+            },
+          },
+          {
+            id: 2,
+            activity: "GD",
+            dep: "YOW",
+            arr: "YOW",
+            std: "0001",
+            sta: "2359",
+            checkOut: "",
+            info: "",
+            details: {
+              activity: "GD,Guaranteed Day off",
+              station: {
+                Value: "YOW - CYOW - OTTAWA",
+              },
+            },
+          },
+          {
+            id: 4,
+            activity: "DH",
+            dep: "YOW",
+            arr: "YTZ",
+            std: "1300",
+            sta: "1400",
+            info: 'T,LP <span style="background-color: rgb(255,255,0);">&nbsp;&nbsp;</span>',
+            details: {
+              activity: "Deadhead",
+            },
+          },
+        ],
+        notes: [],
+      },
+      {
+        date: "2026-06-02",
+        dayNumber: 2,
+        activities: [],
+        notes: [],
+      },
+      {
+        date: "2026-06-03",
+        dayNumber: 3,
+        activities: [
+          {
+            id: 3,
+            activity: "SBY",
+            std: "1000",
+            sta: "1800",
+            info: "",
+            details: {
+              activity: "Standby",
+              station: {
+                Value: "YOW - CYOW - OTTAWA",
+              },
+            },
+          },
+        ],
+        notes: [],
+      },
+    ],
+    rosterNotes: [],
+  };
 }

@@ -134,6 +134,10 @@ export interface NocRosterMonthlyValue {
   readonly value: string;
 }
 
+export function htmlToPlainText(value: string): string {
+  return decodeHtmlEntities(stripHtml(value)).replace(/\s+/g, " ").trim();
+}
+
 type NocCrewNameSearch =
   | { readonly type: "text"; readonly name: string }
   | { readonly type: "regex"; readonly pattern: RegExp };
@@ -736,7 +740,7 @@ function parseCrewOnBoard(value: string): readonly NocRosterCrewOnBoard[] {
 
 function parseCrewOnBoardEntry(value: string): NocRosterCrewOnBoard | undefined {
   const email = /mailto:([^"'>\s]+)/i.exec(value)?.[1];
-  const text = decodeHtmlEntities(stripHtml(value)).trim();
+  const text = htmlToPlainText(value);
 
   if (text.length === 0) {
     return undefined;
@@ -786,11 +790,11 @@ function stripHtml(value: string): string {
 
 function decodeHtmlEntities(value: string): string {
   return value
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
     .replace(/&#39;/g, "'");
 }
 

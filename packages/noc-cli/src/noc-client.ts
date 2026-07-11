@@ -1,8 +1,15 @@
 #!/usr/bin/env node
 
 import { NocAuthenticationError } from "@rhanna/noc-browser";
-import { NocClient } from "@scope/noc-client";
-import type { NocCrew, NocCrewListResult } from "@scope/noc-client";
+import { htmlToPlainText, NocClient } from "@scope/noc-client";
+import type {
+  NocCrew,
+  NocCrewListResult,
+  NocRosterActivity,
+  NocRosterCrewOnBoard,
+  NocRosterDetailValue,
+  NocRosterResult,
+} from "@scope/noc-client";
 import type { CookieJar } from "tough-cookie";
 import {
   isDirectCliExecution,
@@ -11,6 +18,7 @@ import {
   printCliError,
   printFormatted,
   printHelp,
+  readBoolean,
   readString,
   requireInteger,
   requireString,
@@ -82,7 +90,7 @@ const commands: Record<string, CommandSpec> = {
   },
   roster: {
     description:
-      "Print interpreted roster JSON. Requires --month <n>, --year <yyyy>, and --employee-num <num> or --current-crew.",
+      "Print interpreted roster. Requires --month <n>, --year <yyyy>, and --employee-num <num> or --current-crew. Optional --show-crew for table output.",
     requiresAuth: true,
     run: async ({ client, flags }) => {
       const { month, year, employeeNum } = await readRosterCommandOptions(client, flags);
@@ -135,6 +143,11 @@ export async function runNocClientCli(args: readonly string[]): Promise<void> {
   }
 
   const result = await runCommand(command, cli.command, cli.flags, baseUrl);
+
+  if (cli.command === "roster" && format === "table") {
+    console.log(formatRosterTable(result, readRosterShowCrew(cli.flags)));
+    return;
+  }
 
   printFormatted(result, format);
 }
@@ -244,6 +257,141 @@ function compareCrewEmployeeNum(left: NocCrew, right: NocCrew): number {
 
 function compareCrewName(left: NocCrew, right: NocCrew): number {
   return left.displayName.localeCompare(right.displayName);
+}
+
+function formatRosterTable(value: unknown, showCrew: boolean): string {
+  if (!isRosterResult(value)) {
+    return "";
+  }
+
+  const activityDays = value.days.filter((day) => day.activities.length > 0);
+
+  if (activityDays.length === 0) {
+    return "";
+  }
+
+  const columns = ["Date", "Activity", "Dep", "Arr", "CI", "STD/ATD", "STA/ATA", "CO", "Info"];
+  const rows = activityDays.flatMap((day) =>
+    day.activities.map((activity) => rosterActivityRow(day.date, activity)),
+  );
+  const tableRows = [columns, ...rows];
+  const widths = columns.map((_, index) =>
+    Math.max(...tableRows.map((row) => row[index]?.length ?? 0)),
+  );
+  const renderRow = (row: readonly string[]) =>
+    row
+      .map((cell, index) => cell.padEnd(widths[index] ?? 0))
+      .join("  ")
+      .trimEnd();
+  const separator = widths.map((width) => "-".repeat(width)).join("  ");
+  const lines = [renderRow(columns), separator];
+
+  for (const [dayIndex, day] of activityDays.entries()) {
+    if (dayIndex > 0) {
+      lines.push("");
+    }
+
+    for (const activity of day.activities) {
+      lines.push(renderRow(rosterActivityRow(day.date, activity)));
+
+      if (showCrew) {
+        lines.push(...formatCrewLines(activity.details.crewOnBoard, widths[0] ?? 0));
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function readRosterShowCrew(flags: Readonly<Record<string, string | boolean>>): boolean {
+  return readBoolean(flags, "show-crew") === true;
+}
+
+function rosterActivityRow(date: string, activity: NocRosterActivity): readonly string[] {
+  return [
+    date,
+    activity.activity,
+    formatLocation(activity.dep, activity.details.departure ?? activity.details.station),
+    formatLocation(activity.arr, activity.details.arrival),
+    activity.checkIn ?? activity.details.checkIn ?? "",
+    formatScheduledActual(activity.std, activity.atd),
+    formatScheduledActual(activity.sta, activity.ata),
+    activity.checkOut ?? activity.details.checkOut ?? "",
+    formatRosterInfo(activity),
+  ];
+}
+
+function formatScheduledActual(scheduled: string | undefined, actual: string | undefined): string {
+  if (scheduled && actual && scheduled !== actual) {
+    return `${scheduled}/${actual}`;
+  }
+
+  return actual ?? scheduled ?? "";
+}
+
+function formatLocation(
+  value: string | undefined,
+  detail: NocRosterDetailValue | undefined,
+): string {
+  return value ?? formatDetailValue(detail);
+}
+
+function formatDetailValue(value: NocRosterDetailValue | undefined): string {
+  const detailValue = value?.Value?.trim();
+
+  if (!detailValue) {
+    return "";
+  }
+
+  return detailValue.split(" - ")[0]?.trim() ?? detailValue;
+}
+
+function formatRosterInfo(activity: NocRosterActivity): string {
+  const info = firstNonEmpty([
+    activity.info,
+    activity.details.activity,
+    activity.details.rosterLegalException,
+    activity.details.hotel,
+    activity.details.generalNote,
+    activity.details.comment,
+    activity.details.rosterDesignators,
+    activity.details.othersWhoHaveTheSameActivity,
+  ]);
+
+  return info === undefined ? "" : htmlToPlainText(info);
+}
+
+function firstNonEmpty(values: readonly (string | undefined)[]): string | undefined {
+  return values.find((value) => value !== undefined && value.trim().length > 0);
+}
+
+function formatCrewLines(
+  crew: readonly NocRosterCrewOnBoard[] | undefined,
+  dateColumnWidth: number,
+): readonly string[] {
+  return crew?.map((member) => `${" ".repeat(dateColumnWidth)}  ${formatCrewMember(member)}`) ?? [];
+}
+
+function formatCrewMember(member: NocRosterCrewOnBoard): string {
+  const name = [member.firstName, member.lastName].filter(Boolean).join(" ");
+  const designators =
+    member.designators.length > 0 ? ` (${member.designators.join(", ")})` : "";
+
+  return [member.position, member.employeeNum, name].filter(Boolean).join(" ") + designators;
+}
+
+function isRosterResult(value: unknown): value is NocRosterResult {
+  return (
+    isPlainObject(value) &&
+    typeof value.employeeNum === "string" &&
+    typeof value.date === "string" &&
+    Array.isArray(value.days) &&
+    Array.isArray(value.rosterNotes)
+  );
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function runAuthCommand(
