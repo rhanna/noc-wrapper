@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 
-import { NocBrowser, StationOpsSort, StationOpsTimeMode } from "@rhanna/noc-browser";
 import {
+  NocAuthenticationError,
+  NocBrowser,
+  StationOpsSort,
+  StationOpsTimeMode,
+} from "@rhanna/noc-browser";
+import type { CookieJar } from "tough-cookie";
+import {
+  isDirectCliExecution,
   parseArgs,
   printCliError,
   printHelp,
@@ -13,8 +20,15 @@ import {
   requireInteger,
   requireString,
 } from "./cli-utils.js";
+import {
+  createNocBrowserSessionCookieJar,
+  deleteNocBrowserSession,
+  loadNocBrowserSession,
+  saveNocBrowserSession,
+} from "./noc-browser-session.js";
 
 const DEFAULT_BASE_URL = "https://poe.noc.vmc.navblue.cloud/RaidoMobile";
+const DEFAULT_REAUTH_ATTEMPTS = 3;
 
 interface CommandContext {
   readonly browser: NocBrowser;
@@ -31,7 +45,7 @@ const commands: Record<string, CommandSpec> = {
   auth: {
     description: "Authenticate and print the raw authentication result.",
     requiresAuth: false,
-    run: async ({ browser }) => authenticate(browser),
+    run: async ({ browser, flags }) => authenticate(browser, flags),
   },
   "current-user": {
     description: "Print GetCurrentUserInfo raw JSON.",
@@ -150,6 +164,13 @@ const commands: Record<string, CommandSpec> = {
         refreshPage: readBoolean(flags, "refresh-page") ?? true,
       }),
   },
+  logout: {
+    description: "Delete the saved browser session.",
+    requiresAuth: false,
+    run: async () => {
+      throw new Error("logout is handled before browser command execution");
+    },
+  },
 };
 
 export async function runNocBrowserCli(args: readonly string[]): Promise<void> {
@@ -166,20 +187,52 @@ export async function runNocBrowserCli(args: readonly string[]): Promise<void> {
     throw new Error(`Unknown command: ${cli.command}`);
   }
 
-  const browser = new NocBrowser({
-    baseUrl: readString(cli.flags, "base-url") ?? process.env.NOC_BASE_URL ?? DEFAULT_BASE_URL,
-  });
+  const baseUrl = readString(cli.flags, "base-url") ?? process.env.NOC_BASE_URL ?? DEFAULT_BASE_URL;
 
-  if (command.requiresAuth) {
-    await authenticate(browser, cli.flags);
+  if (cli.command === "logout") {
+    printJson({
+      loggedOut: await deleteNocBrowserSession(baseUrl),
+    });
+    return;
   }
 
-  const result = await command.run({
-    browser,
-    flags: cli.flags,
-  });
+  const result = await runCommand(command, cli.command, cli.flags, baseUrl);
 
   printJson(result);
+}
+
+async function runCommand(
+  command: CommandSpec,
+  commandName: string,
+  flags: Readonly<Record<string, string | boolean>>,
+  baseUrl: string,
+): Promise<unknown> {
+  if (commandName === "auth") {
+    const cookieJar = createNocBrowserSessionCookieJar();
+    const browser = createBrowser(baseUrl, cookieJar);
+    return runAuthCommand(command, browser, flags, baseUrl, cookieJar);
+  }
+
+  if (command.requiresAuth) {
+    return runAuthenticatedCommand(
+      command,
+      flags,
+      baseUrl,
+      await loadRequiredSessionCookieJar(baseUrl),
+    );
+  }
+
+  return command.run({
+    browser: createBrowser(baseUrl, createNocBrowserSessionCookieJar()),
+    flags,
+  });
+}
+
+function createBrowser(baseUrl: string, cookieJar: CookieJar): NocBrowser {
+  return new NocBrowser({
+    baseUrl,
+    cookieJar,
+  });
 }
 
 async function authenticate(
@@ -190,6 +243,130 @@ async function authenticate(
     readString(flags, "username") ?? process.env.NOC_USERNAME ?? "",
     readString(flags, "password") ?? process.env.NOC_PASSWORD ?? "",
   );
+}
+
+async function runAuthCommand(
+  command: CommandSpec,
+  browser: NocBrowser,
+  flags: Readonly<Record<string, string | boolean>>,
+  baseUrl: string,
+  cookieJar: CookieJar,
+): Promise<unknown> {
+  const result = await command.run({
+    browser,
+    flags,
+  });
+
+  await saveNocBrowserSession(baseUrl, cookieJar);
+  return result;
+}
+
+async function runAuthenticatedCommand(
+  command: CommandSpec,
+  flags: Readonly<Record<string, string | boolean>>,
+  baseUrl: string,
+  initialCookieJar: CookieJar,
+): Promise<unknown> {
+  let cookieJar = initialCookieJar;
+  let browser = createBrowser(baseUrl, cookieJar);
+  const reauthAttempts = readReauthAttempts(flags);
+
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await command.run({
+        browser,
+        flags,
+      });
+    } catch (error) {
+      if (!isAuthenticationError(error)) {
+        throw error;
+      }
+
+      if (attempt >= reauthAttempts) {
+        throw new Error(
+          `NOC session expired and re-authentication did not restore it after ${reauthAttempts} attempt(s). Run noc-browser auth and try again.`,
+        );
+      }
+
+      cookieJar = createNocBrowserSessionCookieJar();
+      browser = createBrowser(baseUrl, cookieJar);
+      await authenticateWithAvailableCredentials(browser, flags);
+      await saveNocBrowserSession(baseUrl, cookieJar);
+    }
+  }
+}
+
+async function loadRequiredSessionCookieJar(baseUrl: string): Promise<CookieJar> {
+  const session = await loadNocBrowserSession(baseUrl);
+
+  if (!session) {
+    throw new Error("No saved noc-browser session found. Run noc-browser auth first.");
+  }
+
+  return session.cookieJar;
+}
+
+async function authenticateWithAvailableCredentials(
+  browser: NocBrowser,
+  flags: Readonly<Record<string, string | boolean>>,
+): Promise<void> {
+  const username = readString(flags, "username") ?? process.env.NOC_USERNAME;
+  const password = readString(flags, "password") ?? process.env.NOC_PASSWORD;
+
+  if (!username || !password) {
+    throw new Error(
+      "NOC session expired and re-authentication requires NOC_USERNAME and NOC_PASSWORD or --username and --password.",
+    );
+  }
+
+  await browser.authenticate(username, password);
+}
+
+function readReauthAttempts(flags: Readonly<Record<string, string | boolean>>): number {
+  const attempts =
+    readCliReauthAttempts(flags) ??
+    readEnvironmentInteger("NOC_REAUTH_ATTEMPTS") ??
+    DEFAULT_REAUTH_ATTEMPTS;
+
+  if (attempts < 0) {
+    throw new Error("Option --reauth-attempts must be greater than or equal to 0");
+  }
+
+  return attempts;
+}
+
+function readCliReauthAttempts(
+  flags: Readonly<Record<string, string | boolean>>,
+): number | undefined {
+  return flags["reauth-attempts"] === undefined
+    ? undefined
+    : requireInteger(flags, "reauth-attempts");
+}
+
+function readEnvironmentInteger(name: string): number | undefined {
+  const value = process.env[name];
+
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${name} must be an integer`);
+  }
+
+  return parsed;
+}
+
+function isAuthenticationError(error: unknown): boolean {
+  return (
+    error instanceof NocAuthenticationError || getErrorName(error) === "NocAuthenticationError"
+  );
+}
+
+function getErrorName(error: unknown): string | undefined {
+  return error instanceof Error ? error.name : undefined;
 }
 
 async function readRosterHrId(
@@ -343,6 +520,7 @@ function printNocBrowserHelp(): void {
     executable: "noc-browser",
     globalOptions: [
       `  --base-url <url>       Defaults to NOC_BASE_URL or ${DEFAULT_BASE_URL}`,
+      "  --reauth-attempts <n>  Re-auth attempts after session expiry; default 3.",
       "  --username <username>  Defaults to NOC_USERNAME",
       "  --password <password>  Defaults to NOC_PASSWORD",
     ],
@@ -350,7 +528,9 @@ function printNocBrowserHelp(): void {
   });
 }
 
-runNocBrowserCli(process.argv.slice(2)).catch((error: unknown) => {
-  printCliError(error);
-  process.exitCode = 1;
-});
+if (isDirectCliExecution(import.meta.url)) {
+  runNocBrowserCli(process.argv.slice(2)).catch((error: unknown) => {
+    printCliError(error);
+    process.exitCode = 1;
+  });
+}

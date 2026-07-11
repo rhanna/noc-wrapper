@@ -1,3 +1,6 @@
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 export interface CliOptions {
   readonly command?: string;
   readonly flags: Readonly<Record<string, string | boolean>>;
@@ -307,5 +310,21 @@ export function printCliError(error: unknown): void {
     console.error(`${error.name}: ${error.message}`);
   } else {
     console.error(String(error));
+  }
+}
+
+export function isDirectCliExecution(importMetaUrl: string): boolean {
+  const entrypoint = process.argv[1];
+
+  if (!entrypoint) {
+    return false;
+  }
+
+  const modulePath = fileURLToPath(importMetaUrl);
+
+  try {
+    return realpathSync(entrypoint) === realpathSync(modulePath);
+  } catch {
+    return entrypoint === modulePath;
   }
 }
