@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-import { fileURLToPath } from "node:url";
 import { NocAuthenticationError } from "@rhanna/noc-browser";
 import { NocClient } from "@scope/noc-client";
 import type { NocCrew, NocCrewListResult } from "@scope/noc-client";
 import type { CookieJar } from "tough-cookie";
 import {
+  isDirectCliExecution,
   parseArgs,
   parseOutputFormat,
   printCliError,
@@ -400,7 +400,7 @@ function printNocClientHelp(): void {
   });
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isDirectCliExecution(import.meta.url)) {
   runNocClientCli(process.argv.slice(2)).catch((error: unknown) => {
     printCliError(error);
     process.exitCode = 1;

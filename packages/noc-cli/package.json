@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && chmod +x dist/noc-browser.js dist/noc-client.js",
     "test": "npm run test:unit",
     "test:unit": "tsc -p tsconfig.test.json --noEmit && vitest run --config vitest.unit.config.ts"
   },
