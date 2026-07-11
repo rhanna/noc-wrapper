@@ -153,7 +153,7 @@ Client boundary rules:
 
 - Use "crew" naming in `noc-client`, not "human resources".
 - Do not expose `hrId` in public `NocClient` APIs or results.
-- Roster client APIs target either current user or employee number.
+- Roster client APIs target either current crew or employee number.
 - Keep the existing `noc-browser` CLI employee-number roster convenience as an explicit exception.
 - Duplicate employee-number parsing in `noc-client`; do not move the raw CLI parsing helper into the client.
 - Keep revision confirmation manual and explicit.
@@ -186,7 +186,7 @@ Planned sub-phases:
   wiring, persistent `noc-client` CLI session storage, `noc-client auth`, and `noc-client logout`.
 - Phase 7.2 adds crew identity models, lookup by employee number while hiding private browser `hrId` use, and crew CLI
   commands.
-- Phase 7.3 adds roster and monthly value convenience APIs using only current-user or employee-number targets plus roster
+- Phase 7.3 adds roster and monthly value convenience APIs using only current-crew or employee-number targets plus roster
   CLI commands.
 - Phase 7.4 adds Open Time convenience APIs that compose optional legality and block-detail browser calls plus Open Time
   CLI commands.

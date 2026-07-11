@@ -636,10 +636,10 @@ describe("noc-client CLI", () => {
     );
   });
 
-  it("roster resolves --current-user before calling the employee-number client API", async () => {
+  it("roster resolves --current-crew before calling the employee-number client API", async () => {
     await saveTestSession();
 
-    await runNocClientCli(["roster", "--month", "7", "--year", "2026", "--current-user"]);
+    await runNocClientCli(["roster", "--month", "7", "--year", "2026", "--current-crew"]);
 
     expect(nocClientMock.getCurrentCrew).toHaveBeenCalledWith();
     expect(nocClientMock.getRoster).toHaveBeenCalledWith({
@@ -686,7 +686,7 @@ describe("noc-client CLI", () => {
     );
   });
 
-  it("roster-monthly-values resolves --current-user before calling the client API", async () => {
+  it("roster-monthly-values resolves --current-crew before calling the client API", async () => {
     await saveTestSession();
 
     await runNocClientCli([
@@ -695,7 +695,7 @@ describe("noc-client CLI", () => {
       "5",
       "--year",
       "2026",
-      "--current-user",
+      "--current-crew",
     ]);
 
     expect(nocClientMock.getCurrentCrew).toHaveBeenCalledWith();
@@ -706,7 +706,7 @@ describe("noc-client CLI", () => {
     });
   });
 
-  it("roster commands reject employee-num and current-user together", async () => {
+  it("roster commands reject employee-num and current-crew together", async () => {
     await saveTestSession();
 
     await expect(
@@ -718,9 +718,9 @@ describe("noc-client CLI", () => {
         "2026",
         "--employee-num",
         "11538",
-        "--current-user",
+        "--current-crew",
       ]),
-    ).rejects.toThrow("roster target accepts either --employee-num or --current-user, not both");
+    ).rejects.toThrow("roster target accepts either --employee-num or --current-crew, not both");
 
     expect(nocClientMock.getCurrentCrew).not.toHaveBeenCalled();
     expect(nocClientMock.getRoster).not.toHaveBeenCalled();
@@ -731,7 +731,7 @@ describe("noc-client CLI", () => {
 
     await expect(
       runNocClientCli(["roster-monthly-values", "--month", "6", "--year", "2026"]),
-    ).rejects.toThrow("roster target requires --employee-num or --current-user");
+    ).rejects.toThrow("roster target requires --employee-num or --current-crew");
 
     expect(nocClientMock.getRosterMonthlyValues).not.toHaveBeenCalled();
   });

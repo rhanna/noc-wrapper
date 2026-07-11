@@ -82,7 +82,7 @@ const commands: Record<string, CommandSpec> = {
   },
   roster: {
     description:
-      "Print interpreted roster JSON. Requires --month <n>, --year <yyyy>, and --employee-num <num> or --current-user.",
+      "Print interpreted roster JSON. Requires --month <n>, --year <yyyy>, and --employee-num <num> or --current-crew.",
     requiresAuth: true,
     run: async ({ client, flags }) => {
       const { month, year, employeeNum } = await readRosterCommandOptions(client, flags);
@@ -91,7 +91,7 @@ const commands: Record<string, CommandSpec> = {
   },
   "roster-monthly-values": {
     description:
-      "Print interpreted roster monthly values JSON. Requires --month <n>, --year <yyyy>, and --employee-num <num> or --current-user.",
+      "Print interpreted roster monthly values JSON. Requires --month <n>, --year <yyyy>, and --employee-num <num> or --current-crew.",
     requiresAuth: true,
     run: async ({ client, flags }) => {
       const { month, year, employeeNum } = await readRosterCommandOptions(client, flags);
@@ -212,22 +212,22 @@ async function readRosterEmployeeNum(
   flags: Readonly<Record<string, string | boolean>>,
 ): Promise<string> {
   const hasEmployeeNum = flags["employee-num"] !== undefined;
-  const hasCurrentUser = flags["current-user"] !== undefined;
+  const hasCurrentCrew = flags["current-crew"] !== undefined;
 
-  if (hasEmployeeNum && hasCurrentUser) {
-    throw new Error("roster target accepts either --employee-num or --current-user, not both");
+  if (hasEmployeeNum && hasCurrentCrew) {
+    throw new Error("roster target accepts either --employee-num or --current-crew, not both");
   }
 
   if (hasEmployeeNum) {
     return requireString(flags, "employee-num");
   }
 
-  if (hasCurrentUser) {
+  if (hasCurrentCrew) {
     const result = await client.getCurrentCrew();
     return result.crew.employeeNum;
   }
 
-  throw new Error("roster target requires --employee-num or --current-user");
+  throw new Error("roster target requires --employee-num or --current-crew");
 }
 
 function compareCrew(left: NocCrew, right: NocCrew, sort: CrewSortKey): number {
